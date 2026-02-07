@@ -64,15 +64,15 @@ describe("Settings Billing", () => {
     // Set default config to OSS mode
     mockUseConfig.mockReturnValue({
       data: {
-        APP_MODE: "oss",
-        GITHUB_CLIENT_ID: "123",
-        POSTHOG_CLIENT_KEY: "456",
-        FEATURE_FLAGS: {
-          ENABLE_BILLING: false,
-          HIDE_LLM_SETTINGS: false,
-          ENABLE_JIRA: false,
-          ENABLE_JIRA_DC: false,
-          ENABLE_LINEAR: false,
+        app_mode: "oss",
+        github_client_id: "123",
+        posthog_client_key: "456",
+        feature_flags: {
+          enable_billing: false,
+          hide_llm_settings: false,
+          enable_jira: false,
+          enable_jira_dc: false,
+          enable_linear: false,
         },
       },
       isLoading: false,
@@ -116,18 +116,19 @@ describe("Settings Billing", () => {
     expect(credits).not.toBeInTheDocument();
   });
 
-  it("should render the billing tab if SaaS mode and billing is enabled", async () => {
+  it("should render the billing tab if SaaS mode and enable_billing is true", async () => {
+    // When enable_billing is true, the billing nav item is shown
     mockUseConfig.mockReturnValue({
       data: {
-        APP_MODE: "saas",
-        GITHUB_CLIENT_ID: "123",
-        POSTHOG_CLIENT_KEY: "456",
-        FEATURE_FLAGS: {
-          ENABLE_BILLING: true,
-          HIDE_LLM_SETTINGS: false,
-          ENABLE_JIRA: false,
-          ENABLE_JIRA_DC: false,
-          ENABLE_LINEAR: false,
+        app_mode: "saas",
+        github_client_id: "123",
+        posthog_client_key: "456",
+        feature_flags: {
+          enable_billing: true,
+          hide_llm_settings: false,
+          enable_jira: false,
+          enable_jira_dc: false,
+          enable_linear: false,
         },
       },
       isLoading: false,
@@ -141,17 +142,18 @@ describe("Settings Billing", () => {
 
   it("should render the billing settings if clicking the billing item", async () => {
     const user = userEvent.setup();
+    // When enable_billing is true, the billing nav item is shown
     mockUseConfig.mockReturnValue({
       data: {
-        APP_MODE: "saas",
-        GITHUB_CLIENT_ID: "123",
-        POSTHOG_CLIENT_KEY: "456",
-        FEATURE_FLAGS: {
-          ENABLE_BILLING: true,
-          HIDE_LLM_SETTINGS: false,
-          ENABLE_JIRA: false,
-          ENABLE_JIRA_DC: false,
-          ENABLE_LINEAR: false,
+        app_mode: "saas",
+        github_client_id: "123",
+        posthog_client_key: "456",
+        feature_flags: {
+          enable_billing: true,
+          hide_llm_settings: false,
+          enable_jira: false,
+          enable_jira_dc: false,
+          enable_linear: false,
         },
       },
       isLoading: false,

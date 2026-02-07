@@ -246,7 +246,7 @@ function ManageOrg() {
     !!me && rolePermissions[me.role].includes("delete_organization");
   const canAddCredits =
     !!me && rolePermissions[me.role].includes("add_credits");
-  const isBillingHidden = config?.FEATURE_FLAGS?.HIDE_BILLING;
+  const isBillingHidden = !config?.feature_flags?.enable_billing;
 
   return (
     <div

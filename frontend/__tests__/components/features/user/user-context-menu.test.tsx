@@ -95,17 +95,16 @@ describe("UserContextMenu", () => {
   });
 
   it("should render navigation items from SAAS_NAV_ITEMS (except organization-members/org)", async () => {
+    // @ts-expect-error - partial mock for testing
     vi.spyOn(OptionService, "getConfig").mockResolvedValue({
-      APP_MODE: "saas",
-      GITHUB_CLIENT_ID: "test",
-      POSTHOG_CLIENT_KEY: "test",
-      FEATURE_FLAGS: {
-        ENABLE_BILLING: false,
-        HIDE_LLM_SETTINGS: false,
-        HIDE_BILLING: false,
-        ENABLE_JIRA: false,
-        ENABLE_JIRA_DC: false,
-        ENABLE_LINEAR: false,
+      app_mode: "saas",
+      posthog_client_key: "test",
+      feature_flags: {
+        enable_billing: true, // Enable billing so billing link is shown
+        hide_llm_settings: false,
+        enable_jira: false,
+        enable_jira_dc: false,
+        enable_linear: false,
       },
     });
 
@@ -141,17 +140,16 @@ describe("UserContextMenu", () => {
 
   describe("OSS mode", () => {
     beforeEach(() => {
+      // @ts-expect-error - partial mock for testing
       vi.spyOn(OptionService, "getConfig").mockResolvedValue({
-        APP_MODE: "oss",
-        GITHUB_CLIENT_ID: "test",
-        POSTHOG_CLIENT_KEY: "test",
-        FEATURE_FLAGS: {
-          ENABLE_BILLING: false,
-          HIDE_LLM_SETTINGS: false,
-          HIDE_BILLING: false,
-          ENABLE_JIRA: false,
-          ENABLE_JIRA_DC: false,
-          ENABLE_LINEAR: false,
+        app_mode: "oss",
+        posthog_client_key: "test",
+        feature_flags: {
+          enable_billing: false,
+          hide_llm_settings: false,
+          enable_jira: false,
+          enable_jira_dc: false,
+          enable_linear: false,
         },
       });
     });
@@ -189,17 +187,16 @@ describe("UserContextMenu", () => {
 
   describe("HIDE_LLM_SETTINGS feature flag", () => {
     it("should hide LLM settings link when HIDE_LLM_SETTINGS is true", async () => {
+      // @ts-expect-error - partial mock for testing
       vi.spyOn(OptionService, "getConfig").mockResolvedValue({
-        APP_MODE: "saas",
-        GITHUB_CLIENT_ID: "test",
-        POSTHOG_CLIENT_KEY: "test",
-        FEATURE_FLAGS: {
-          ENABLE_BILLING: false,
-          HIDE_LLM_SETTINGS: true,
-          HIDE_BILLING: false,
-          ENABLE_JIRA: false,
-          ENABLE_JIRA_DC: false,
-          ENABLE_LINEAR: false,
+        app_mode: "saas",
+        posthog_client_key: "test",
+        feature_flags: {
+          enable_billing: false,
+          hide_llm_settings: true,
+          enable_jira: false,
+          enable_jira_dc: false,
+          enable_linear: false,
         },
       });
 
@@ -216,17 +213,16 @@ describe("UserContextMenu", () => {
     });
 
     it("should show LLM settings link when HIDE_LLM_SETTINGS is false", async () => {
+      // @ts-expect-error - partial mock for testing
       vi.spyOn(OptionService, "getConfig").mockResolvedValue({
-        APP_MODE: "saas",
-        GITHUB_CLIENT_ID: "test",
-        POSTHOG_CLIENT_KEY: "test",
-        FEATURE_FLAGS: {
-          ENABLE_BILLING: false,
-          HIDE_LLM_SETTINGS: false,
-          HIDE_BILLING: false,
-          ENABLE_JIRA: false,
-          ENABLE_JIRA_DC: false,
-          ENABLE_LINEAR: false,
+        app_mode: "saas",
+        posthog_client_key: "test",
+        feature_flags: {
+          enable_billing: false,
+          hide_llm_settings: false,
+          enable_jira: false,
+          enable_jira_dc: false,
+          enable_linear: false,
         },
       });
 
@@ -269,17 +265,16 @@ describe("UserContextMenu", () => {
   });
 
   it("should have correct navigation links for nav items", async () => {
+    // @ts-expect-error - partial mock for testing
     vi.spyOn(OptionService, "getConfig").mockResolvedValue({
-      APP_MODE: "saas",
-      GITHUB_CLIENT_ID: "test",
-      POSTHOG_CLIENT_KEY: "test",
-      FEATURE_FLAGS: {
-        ENABLE_BILLING: false,
-        HIDE_LLM_SETTINGS: false,
-        HIDE_BILLING: false,
-        ENABLE_JIRA: false,
-        ENABLE_JIRA_DC: false,
-        ENABLE_LINEAR: false,
+      app_mode: "saas",
+      posthog_client_key: "test",
+      feature_flags: {
+        enable_billing: true, // Enable billing so billing link is shown
+        hide_llm_settings: false,
+        enable_jira: false,
+        enable_jira_dc: false,
+        enable_linear: false,
       },
     });
 

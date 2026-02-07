@@ -26,8 +26,8 @@ vi.mock("react-i18next", async () => {
     useTranslation: () => ({
       t: (key: string) => {
         const translations: Record<string, string> = {
-          "ORG$SELECT_ORGANIZATION_PLACEHOLDER": "Please select an organization",
-          "ORG$PERSONAL_WORKSPACE": "Personal Workspace",
+          ORG$SELECT_ORGANIZATION_PLACEHOLDER: "Please select an organization",
+          ORG$PERSONAL_WORKSPACE: "Personal Workspace",
         };
         return translations[key] || key;
       },
@@ -66,7 +66,7 @@ const useIsAuthedMock = vi
 
 const useConfigMock = vi
   .fn()
-  .mockReturnValue({ data: { APP_MODE: "saas" }, isLoading: false });
+  .mockReturnValue({ data: { app_mode: "saas" }, isLoading: false });
 
 const useUserProvidersMock = vi
   .fn()
@@ -98,7 +98,7 @@ describe("UserActions", () => {
     // Reset all mocks to default values before each test
     useIsAuthedMock.mockReturnValue({ data: true, isLoading: false });
     useConfigMock.mockReturnValue({
-      data: { APP_MODE: "saas" },
+      data: { app_mode: "saas" },
       isLoading: false,
     });
     useUserProvidersMock.mockReturnValue({
@@ -123,7 +123,7 @@ describe("UserActions", () => {
     useIsAuthedMock.mockReturnValue({ data: false, isLoading: false });
     // Keep other mocks with default values
     useConfigMock.mockReturnValue({
-      data: { APP_MODE: "saas" },
+      data: { app_mode: "saas" },
       isLoading: false,
     });
     useUserProvidersMock.mockReturnValue({
@@ -162,7 +162,7 @@ describe("UserActions", () => {
     useIsAuthedMock.mockReturnValue({ data: false, isLoading: false });
     // Keep other mocks with default values
     useConfigMock.mockReturnValue({
-      data: { APP_MODE: "saas" },
+      data: { app_mode: "saas" },
       isLoading: false,
     });
     useUserProvidersMock.mockReturnValue({
@@ -188,7 +188,7 @@ describe("UserActions", () => {
     useIsAuthedMock.mockReturnValue({ data: false, isLoading: false });
     // Keep other mocks with default values
     useConfigMock.mockReturnValue({
-      data: { APP_MODE: "saas" },
+      data: { app_mode: "saas" },
       isLoading: false,
     });
     useUserProvidersMock.mockReturnValue({
@@ -209,7 +209,7 @@ describe("UserActions", () => {
     useIsAuthedMock.mockReturnValue({ data: true, isLoading: false });
     // Ensure config and providers are set correctly
     useConfigMock.mockReturnValue({
-      data: { APP_MODE: "saas" },
+      data: { app_mode: "saas" },
       isLoading: false,
     });
     useUserProvidersMock.mockReturnValue({
@@ -236,7 +236,7 @@ describe("UserActions", () => {
     // Start with authentication and providers
     useIsAuthedMock.mockReturnValue({ data: true, isLoading: false });
     useConfigMock.mockReturnValue({
-      data: { APP_MODE: "saas" },
+      data: { app_mode: "saas" },
       isLoading: false,
     });
     useUserProvidersMock.mockReturnValue({
@@ -256,7 +256,7 @@ describe("UserActions", () => {
     useIsAuthedMock.mockReturnValue({ data: false, isLoading: false });
     // Keep other mocks with default values
     useConfigMock.mockReturnValue({
-      data: { APP_MODE: "saas" },
+      data: { app_mode: "saas" },
       isLoading: false,
     });
     useUserProvidersMock.mockReturnValue({
@@ -280,6 +280,16 @@ describe("UserActions", () => {
   });
 
   it("should work with loading state and user provided", async () => {
+    // Ensure authentication and providers are set correctly
+    useIsAuthedMock.mockReturnValue({ data: true, isLoading: false });
+    useConfigMock.mockReturnValue({
+      data: { app_mode: "saas" },
+      isLoading: false,
+    });
+    useUserProvidersMock.mockReturnValue({
+      providers: [{ id: "github", name: "GitHub" }],
+    });
+
     renderUserActions();
     const userActions = screen.getByTestId("user-actions");
     await user.hover(userActions);

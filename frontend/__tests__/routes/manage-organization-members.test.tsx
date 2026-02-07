@@ -72,9 +72,16 @@ describe("Manage Organization Members Route", () => {
 
   beforeEach(() => {
     const getConfigSpy = vi.spyOn(OptionService, "getConfig");
-    // @ts-expect-error - only return APP_MODE for these tests
+    // @ts-expect-error - partial mock for testing
     getConfigSpy.mockResolvedValue({
-      APP_MODE: "saas",
+      app_mode: "saas",
+      feature_flags: {
+        enable_billing: true,
+        hide_llm_settings: false,
+        enable_jira: false,
+        enable_jira_dc: false,
+        enable_linear: false,
+      },
     });
 
     queryClient = new QueryClient();
@@ -263,9 +270,9 @@ describe("Manage Organization Members Route", () => {
 
   it("should navigate away from the page if not saas", async () => {
     const getConfigSpy = vi.spyOn(OptionService, "getConfig");
-    // @ts-expect-error - only return APP_MODE for these tests
+    // @ts-expect-error - partial mock for testing
     getConfigSpy.mockResolvedValue({
-      APP_MODE: "oss",
+      app_mode: "oss",
     });
 
     renderManageOrganizationMembers();

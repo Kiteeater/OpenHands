@@ -132,9 +132,16 @@ describe("Manage Org Route", () => {
     useSelectedOrganizationStore.setState({ organizationId: null });
 
     const getConfigSpy = vi.spyOn(OptionService, "getConfig");
-    // @ts-expect-error - only return APP_MODE for these tests
+    // @ts-expect-error - partial mock for testing
     getConfigSpy.mockResolvedValue({
-      APP_MODE: "saas",
+      app_mode: "saas",
+      feature_flags: {
+        enable_billing: true, // Enable billing by default so billing UI is shown
+        hide_llm_settings: false,
+        enable_jira: false,
+        enable_jira_dc: false,
+        enable_linear: false,
+      },
     });
 
     // Set default mock for user (owner role has all permissions)
@@ -576,7 +583,7 @@ describe("Manage Org Route", () => {
 
       // @ts-expect-error - only return the properties we need for this test
       getConfigSpy.mockResolvedValue({
-        APP_MODE: "saas", // required to enable getMe
+        app_mode: "saas", // required to enable getMe
       });
 
       renderManageOrg();
@@ -642,7 +649,7 @@ describe("Manage Org Route", () => {
       const getConfigSpy = vi.spyOn(OptionService, "getConfig");
       // @ts-expect-error - only return the properties we need for this test
       getConfigSpy.mockResolvedValue({
-        APP_MODE: "saas", // required to enable getMe
+        app_mode: "saas", // required to enable getMe
       });
 
       renderManageOrg();
@@ -762,21 +769,104 @@ describe("Manage Org Route", () => {
     });
   });
 
-  describe("HIDE_BILLING feature flag", () => {
-    it("should hide credits section when HIDE_BILLING is true", async () => {
+  describe("enable_billing feature flag", () => {
+    it("should show credits section when enable_billing is true", async () => {
       // Arrange
       const getConfigSpy = vi.spyOn(OptionService, "getConfig");
+      // @ts-expect-error - partial mock for testing
       getConfigSpy.mockResolvedValue({
-        APP_MODE: "saas",
-        GITHUB_CLIENT_ID: "test",
-        POSTHOG_CLIENT_KEY: "test",
-        FEATURE_FLAGS: {
-          ENABLE_BILLING: false,
-          HIDE_LLM_SETTINGS: false,
-          HIDE_BILLING: true,
-          ENABLE_JIRA: false,
-          ENABLE_JIRA_DC: false,
-          ENABLE_LINEAR: false,
+        app_mode: "saas",
+        feature_flags: {
+          enable_billing: true,
+          hide_llm_settings: false,
+          enable_jira: false,
+          enable_jira_dc: false,
+          enable_linear: false,
+        },
+      });
+
+      // Act
+      renderManageOrg();
+      await screen.findByTestId("manage-org-screen");
+      await selectOrganization({ orgIndex: 0 });
+
+      // Assert
+      await waitFor(() => {
+        expect(screen.getByTestId("available-credits")).toBeInTheDocument();
+      });
+
+      getConfigSpy.mockRestore();
+    });
+
+    it("should show billing information section when enable_billing is true", async () => {
+      // Arrange
+      const getConfigSpy = vi.spyOn(OptionService, "getConfig");
+      // @ts-expect-error - partial mock for testing
+      getConfigSpy.mockResolvedValue({
+        app_mode: "saas",
+        feature_flags: {
+          enable_billing: true,
+          hide_llm_settings: false,
+          enable_jira: false,
+          enable_jira_dc: false,
+          enable_linear: false,
+        },
+      });
+
+      // Act
+      renderManageOrg();
+      await screen.findByTestId("manage-org-screen");
+      await selectOrganization({ orgIndex: 0 });
+
+      // Assert
+      await waitFor(() => {
+        expect(screen.getByTestId("billing-info")).toBeInTheDocument();
+      });
+
+      getConfigSpy.mockRestore();
+    });
+
+    it("should show Add Credits button when enable_billing is true", async () => {
+      // Arrange
+      const getConfigSpy = vi.spyOn(OptionService, "getConfig");
+      // @ts-expect-error - partial mock for testing
+      getConfigSpy.mockResolvedValue({
+        app_mode: "saas",
+        feature_flags: {
+          enable_billing: true,
+          hide_llm_settings: false,
+          enable_jira: false,
+          enable_jira_dc: false,
+          enable_linear: false,
+        },
+      });
+
+      // Act
+      renderManageOrg();
+      await screen.findByTestId("manage-org-screen");
+      await selectOrganization({ orgIndex: 0 });
+
+      // Assert
+      await waitFor(() => {
+        const addButton = screen.getByText(/add/i);
+        expect(addButton).toBeInTheDocument();
+      });
+
+      getConfigSpy.mockRestore();
+    });
+
+    it("should hide all billing-related elements when enable_billing is false", async () => {
+      // Arrange
+      const getConfigSpy = vi.spyOn(OptionService, "getConfig");
+      // @ts-expect-error - partial mock for testing
+      getConfigSpy.mockResolvedValue({
+        app_mode: "saas",
+        feature_flags: {
+          enable_billing: false,
+          hide_llm_settings: false,
+          enable_jira: false,
+          enable_jira_dc: false,
+          enable_linear: false,
         },
       });
 
@@ -790,99 +880,8 @@ describe("Manage Org Route", () => {
         expect(
           screen.queryByTestId("available-credits"),
         ).not.toBeInTheDocument();
-      });
-
-      getConfigSpy.mockRestore();
-    });
-
-    it("should hide billing information section when HIDE_BILLING is true", async () => {
-      // Arrange
-      const getConfigSpy = vi.spyOn(OptionService, "getConfig");
-      getConfigSpy.mockResolvedValue({
-        APP_MODE: "saas",
-        GITHUB_CLIENT_ID: "test",
-        POSTHOG_CLIENT_KEY: "test",
-        FEATURE_FLAGS: {
-          ENABLE_BILLING: false,
-          HIDE_LLM_SETTINGS: false,
-          HIDE_BILLING: true,
-          ENABLE_JIRA: false,
-          ENABLE_JIRA_DC: false,
-          ENABLE_LINEAR: false,
-        },
-      });
-
-      // Act
-      renderManageOrg();
-      await screen.findByTestId("manage-org-screen");
-      await selectOrganization({ orgIndex: 0 });
-
-      // Assert
-      await waitFor(() => {
         expect(screen.queryByTestId("billing-info")).not.toBeInTheDocument();
-      });
-
-      getConfigSpy.mockRestore();
-    });
-
-    it("should hide Add Credits button when HIDE_BILLING is true", async () => {
-      // Arrange
-      const getConfigSpy = vi.spyOn(OptionService, "getConfig");
-      getConfigSpy.mockResolvedValue({
-        APP_MODE: "saas",
-        GITHUB_CLIENT_ID: "test",
-        POSTHOG_CLIENT_KEY: "test",
-        FEATURE_FLAGS: {
-          ENABLE_BILLING: false,
-          HIDE_LLM_SETTINGS: false,
-          HIDE_BILLING: true,
-          ENABLE_JIRA: false,
-          ENABLE_JIRA_DC: false,
-          ENABLE_LINEAR: false,
-        },
-      });
-
-      // Act
-      renderManageOrg();
-      await screen.findByTestId("manage-org-screen");
-      await selectOrganization({ orgIndex: 0 });
-
-      // Assert
-      await waitFor(() => {
-        const addButton = screen.queryByText(/add/i);
-        expect(addButton).not.toBeInTheDocument();
-      });
-
-      getConfigSpy.mockRestore();
-    });
-
-    it("should show all billing-related elements when HIDE_BILLING is false", async () => {
-      // Arrange
-      const getConfigSpy = vi.spyOn(OptionService, "getConfig");
-      getConfigSpy.mockResolvedValue({
-        APP_MODE: "saas",
-        GITHUB_CLIENT_ID: "test",
-        POSTHOG_CLIENT_KEY: "test",
-        FEATURE_FLAGS: {
-          ENABLE_BILLING: false,
-          HIDE_LLM_SETTINGS: false,
-          HIDE_BILLING: false,
-          ENABLE_JIRA: false,
-          ENABLE_JIRA_DC: false,
-          ENABLE_LINEAR: false,
-        },
-      });
-
-      // Act
-      renderManageOrg();
-      await screen.findByTestId("manage-org-screen");
-      await selectOrganization({ orgIndex: 0 });
-
-      // Assert
-      await waitFor(() => {
-        expect(screen.getByTestId("available-credits")).toBeInTheDocument();
-        expect(screen.getByTestId("billing-info")).toBeInTheDocument();
-        expect(screen.getByText(/add/i)).toBeInTheDocument();
+        expect(screen.queryByText(/add/i)).not.toBeInTheDocument();
       });
 
       getConfigSpy.mockRestore();

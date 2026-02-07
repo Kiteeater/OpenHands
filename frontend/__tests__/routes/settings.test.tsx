@@ -112,7 +112,7 @@ describe("Settings Screen", () => {
     const getConfigSpy = vi.spyOn(OptionService, "getConfig");
     // @ts-expect-error - only return app mode
     getConfigSpy.mockResolvedValue({
-      APP_MODE: "oss",
+      app_mode: "oss",
     });
 
     // Clear any existing query data
@@ -138,11 +138,20 @@ describe("Settings Screen", () => {
   });
 
   it("should render the saas navbar", async () => {
-    const saasConfig = { APP_MODE: "saas" };
+    const saasConfig = {
+      app_mode: "saas",
+      feature_flags: {
+        enable_billing: true,
+        hide_llm_settings: false,
+        enable_jira: false,
+        enable_jira_dc: false,
+        enable_linear: false,
+      },
+    };
 
     // Clear any existing query data and set the config
     mockQueryClient.clear();
-    mockQueryClient.setQueryData(["config"], saasConfig);
+    mockQueryClient.setQueryData(["web-client-config"], saasConfig);
 
     const sectionsToInclude = [
       "llm", // LLM settings are now always shown in SaaS mode
@@ -176,7 +185,7 @@ describe("Settings Screen", () => {
     const getConfigSpy = vi.spyOn(OptionService, "getConfig");
     // @ts-expect-error - only return app mode
     getConfigSpy.mockResolvedValue({
-      APP_MODE: "oss",
+      app_mode: "oss",
     });
 
     // Clear any existing query data
@@ -243,7 +252,7 @@ describe("Settings Screen", () => {
     it("should not show Billing settings item when team org is selected", async () => {
       // Set up SaaS mode (which has Billing in nav items)
       mockQueryClient.clear();
-      mockQueryClient.setQueryData(["config"], { APP_MODE: "saas" });
+      mockQueryClient.setQueryData(["web-client-config"], { app_mode: "saas" });
       // Pre-select the team org in the query client and Zustand store
       mockQueryClient.setQueryData(["organizations"], [MOCK_TEAM_ORG_ACME]);
       useSelectedOrganizationStore.setState({ organizationId: "2" });
@@ -311,7 +320,7 @@ describe("Settings Screen", () => {
 
     it("should not allow direct URL access to /settings/org-members when personal org is selected", async () => {
       // Set up config and organizations in query client so clientLoader can access them
-      mockQueryClient.setQueryData(["config"], { APP_MODE: "saas" });
+      mockQueryClient.setQueryData(["web-client-config"], { app_mode: "saas" });
       mockQueryClient.setQueryData(["organizations"], [MOCK_PERSONAL_ORG]);
       // Use Zustand store for selected org ID
       useSelectedOrganizationStore.setState({ organizationId: "1" });
@@ -362,50 +371,20 @@ describe("Settings Screen", () => {
     });
   });
 
-  describe("HIDE_BILLING feature flag", () => {
-    it("should hide billing navigation item when HIDE_BILLING is true", async () => {
+  describe("enable_billing feature flag", () => {
+    it("should show billing navigation item when enable_billing is true", async () => {
       // Arrange
       const getConfigSpy = vi.spyOn(OptionService, "getConfig");
+      // @ts-expect-error - partial mock for testing
       getConfigSpy.mockResolvedValue({
-        APP_MODE: "saas",
-        GITHUB_CLIENT_ID: "test",
-        POSTHOG_CLIENT_KEY: "test",
-        FEATURE_FLAGS: {
-          ENABLE_BILLING: false,
-          HIDE_LLM_SETTINGS: false,
-          HIDE_BILLING: true,
-          ENABLE_JIRA: false,
-          ENABLE_JIRA_DC: false,
-          ENABLE_LINEAR: false,
-        },
-      });
-
-      mockQueryClient.clear();
-
-      // Act
-      renderSettingsScreen();
-
-      // Assert
-      const navbar = await screen.findByTestId("settings-navbar");
-      expect(within(navbar).queryByText("Billing")).not.toBeInTheDocument();
-
-      getConfigSpy.mockRestore();
-    });
-
-    it("should show billing navigation item when HIDE_BILLING is false", async () => {
-      // Arrange
-      const getConfigSpy = vi.spyOn(OptionService, "getConfig");
-      getConfigSpy.mockResolvedValue({
-        APP_MODE: "saas",
-        GITHUB_CLIENT_ID: "test",
-        POSTHOG_CLIENT_KEY: "test",
-        FEATURE_FLAGS: {
-          ENABLE_BILLING: false,
-          HIDE_LLM_SETTINGS: false,
-          HIDE_BILLING: false,
-          ENABLE_JIRA: false,
-          ENABLE_JIRA_DC: false,
-          ENABLE_LINEAR: false,
+        app_mode: "saas",
+        posthog_client_key: "test",
+        feature_flags: {
+          enable_billing: true, // When enable_billing is true, billing nav is shown
+          hide_llm_settings: false,
+          enable_jira: false,
+          enable_jira_dc: false,
+          enable_linear: false,
         },
       });
 
@@ -438,6 +417,34 @@ describe("Settings Screen", () => {
       await waitFor(() => {
         expect(within(navbar).getByText("Billing")).toBeInTheDocument();
       });
+
+      getConfigSpy.mockRestore();
+    });
+
+    it("should hide billing navigation item when enable_billing is false", async () => {
+      // Arrange
+      const getConfigSpy = vi.spyOn(OptionService, "getConfig");
+      // @ts-expect-error - partial mock for testing
+      getConfigSpy.mockResolvedValue({
+        app_mode: "saas",
+        posthog_client_key: "test",
+        feature_flags: {
+          enable_billing: false, // When enable_billing is false, billing nav is hidden
+          hide_llm_settings: false,
+          enable_jira: false,
+          enable_jira_dc: false,
+          enable_linear: false,
+        },
+      });
+
+      mockQueryClient.clear();
+
+      // Act
+      renderSettingsScreen();
+
+      // Assert
+      const navbar = await screen.findByTestId("settings-navbar");
+      expect(within(navbar).queryByText("Billing")).not.toBeInTheDocument();
 
       getConfigSpy.mockRestore();
     });
@@ -478,7 +485,7 @@ describe("Settings Screen", () => {
 
     it("should redirect away from /settings/billing when team org is selected in Zustand store", async () => {
       // Arrange: Set up config and organizations in query client
-      mockQueryClient.setQueryData(["config"], { APP_MODE: "saas" });
+      mockQueryClient.setQueryData(["web-client-config"], { app_mode: "saas" });
       mockQueryClient.setQueryData(["organizations"], [MOCK_TEAM_ORG_ACME]);
 
       // Set org ID ONLY in Zustand store (not in query client)

@@ -32,10 +32,20 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
   <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 );
 
-const mockConfig = (appMode: "saas" | "oss", hideLlmSettings = false) => {
+const mockConfig = (
+  appMode: "saas" | "oss",
+  hideLlmSettings = false,
+  enableBilling = true,
+) => {
   vi.spyOn(OptionService, "getConfig").mockResolvedValue({
-    APP_MODE: appMode,
-    FEATURE_FLAGS: { HIDE_LLM_SETTINGS: hideLlmSettings },
+    app_mode: appMode,
+    feature_flags: {
+      hide_llm_settings: hideLlmSettings,
+      enable_billing: enableBilling,
+      enable_jira: false,
+      enable_jira_dc: false,
+      enable_linear: false,
+    },
   } as Awaited<ReturnType<typeof OptionService.getConfig>>);
 };
 
@@ -80,7 +90,7 @@ describe("useSettingsNavItems", () => {
     });
   });
 
-  it("should return OSS_NAV_ITEMS when APP_MODE is 'oss'", async () => {
+  it("should return OSS_NAV_ITEMS when app_mode is 'oss'", async () => {
     mockConfig("oss");
     const { result } = renderHook(() => useSettingsNavItems(), { wrapper });
 
@@ -89,7 +99,7 @@ describe("useSettingsNavItems", () => {
     });
   });
 
-  it("should filter out '/settings' item when HIDE_LLM_SETTINGS feature flag is enabled", async () => {
+  it("should filter out '/settings' item when hide_llm_settings feature flag is enabled", async () => {
     mockConfig("saas", true);
     const { result } = renderHook(() => useSettingsNavItems(), { wrapper });
 
