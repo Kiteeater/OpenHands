@@ -3,14 +3,16 @@ import { Outlet, redirect, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Route } from "./+types/settings";
 import OptionService from "#/api/option-service/option-service.api";
-import { organizationService } from "#/api/organization-service/organization-service.api";
 import { queryClient } from "#/query-client-config";
-import { Organization } from "#/types/org";
 import { SettingsLayout } from "#/components/features/settings";
 import { WebClientConfig } from "#/api/option-service/option.types";
+import { Organization } from "#/types/org";
 import { Typography } from "#/ui/typography";
 import { useSettingsNavItems } from "#/hooks/use-settings-nav-items";
+import { getActiveOrganizationUser } from "#/utils/org/permission-checks";
 import { getSelectedOrganizationIdFromStore } from "#/stores/selected-organization-store";
+import { rolePermissions } from "#/utils/org/permissions";
+import { isBillingHidden } from "#/utils/org/billing-visibility";
 
 const SAAS_ONLY_PATHS = [
   "/settings/user",
@@ -24,6 +26,7 @@ const SAAS_ONLY_PATHS = [
 export const clientLoader = async ({ request }: Route.ClientLoaderArgs) => {
   const url = new URL(request.url);
   const { pathname } = url;
+  const user = await getActiveOrganizationUser();
 
   let config = queryClient.getQueryData<WebClientConfig>(["web-client-config"]);
   if (!config) {
@@ -43,31 +46,44 @@ export const clientLoader = async ({ request }: Route.ClientLoaderArgs) => {
     return isSaas ? redirect("/settings/user") : redirect("/settings/mcp");
   }
 
-  // Get org data for org-based route protection
-  // Use Zustand store (not query client) - this is the canonical source of the selected org ID
+  // Org-type detection for route protection
   const orgId = getSelectedOrganizationIdFromStore();
-  let organizations = queryClient.getQueryData<Organization[]>([
+  const organizations = queryClient.getQueryData<Organization[]>([
     "organizations",
   ]);
-  if (!organizations) {
-    organizations = await organizationService.getOrganizations();
-    queryClient.setQueryData<Organization[]>(["organizations"], organizations);
-  }
-
   const selectedOrg = organizations?.find((org) => org.id === orgId);
   const isPersonalOrg = selectedOrg?.is_personal === true;
-  const isTeamOrg = selectedOrg && !selectedOrg.is_personal;
+  const isTeamOrg = !!selectedOrg && !selectedOrg.is_personal;
 
-  // Combined billing visibility check: hide if billing not enabled OR team org
-  const shouldHideBilling = !config?.feature_flags?.enable_billing || isTeamOrg;
-
-  if (shouldHideBilling && pathname === "/settings/billing") {
-    return isSaas ? redirect("/settings/user") : redirect("/settings/mcp");
+  // Billing route protection
+  if (pathname === "/settings/billing") {
+    if (
+      !user ||
+      isBillingHidden(
+        config,
+        rolePermissions[user.role ?? "member"].includes("view_billing"),
+      ) ||
+      isTeamOrg
+    ) {
+      if (isSaas) {
+        return redirect("/settings/user");
+      }
+    }
   }
 
-  // Personal org: redirect away from org management routes
-  if (isPersonalOrg) {
-    if (pathname === "/settings/org" || pathname === "/settings/org-members") {
+  // Org route protection: redirect if user lacks required permissions or personal org
+  if (pathname === "/settings/org" || pathname === "/settings/org-members") {
+    const role = user?.role ?? "member";
+    const requiredPermission =
+      pathname === "/settings/org"
+        ? "view_billing"
+        : "invite_user_to_organization";
+
+    if (
+      !user ||
+      !rolePermissions[role].includes(requiredPermission) ||
+      isPersonalOrg
+    ) {
       return redirect("/settings");
     }
   }

@@ -4,6 +4,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { QueryClientProvider } from "@tanstack/react-query";
 import SettingsScreen, { clientLoader } from "#/routes/settings";
 import OptionService from "#/api/option-service/option-service.api";
+import { OrganizationMember } from "#/types/org";
 import { organizationService } from "#/api/organization-service/organization-service.api";
 import { MOCK_PERSONAL_ORG, MOCK_TEAM_ORG_ACME } from "#/mocks/org-handlers";
 import { useSelectedOrganizationStore } from "#/stores/selected-organization-store";
@@ -53,6 +54,29 @@ describe("Settings Screen", () => {
   vi.mock("#/query-client-config", () => ({
     queryClient: mockQueryClient,
   }));
+
+  const createMockUser = (
+    overrides: Partial<OrganizationMember> = {},
+  ): OrganizationMember => ({
+    org_id: "org-1",
+    user_id: "user-1",
+    email: "test@example.com",
+    role: "member",
+    llm_api_key: "",
+    max_iterations: 100,
+    llm_model: "gpt-4",
+    llm_api_key_for_byor: null,
+    llm_base_url: "",
+    status: "active",
+    ...overrides,
+  });
+
+  const seedActiveUser = (user: Partial<OrganizationMember>) => {
+    useSelectedOrganizationStore.setState({ organizationId: "org-1" });
+    vi.spyOn(organizationService, "getMe").mockResolvedValue(
+      createMockUser(user),
+    );
+  };
 
   const RouterStub = createRoutesStub([
     {
@@ -152,6 +176,7 @@ describe("Settings Screen", () => {
     // Clear any existing query data and set the config
     mockQueryClient.clear();
     mockQueryClient.setQueryData(["web-client-config"], saasConfig);
+    seedActiveUser({ role: "admin" });
 
     const sectionsToInclude = [
       "llm", // LLM settings are now always shown in SaaS mode
@@ -167,6 +192,9 @@ describe("Settings Screen", () => {
     renderSettingsScreen();
 
     const navbar = await screen.findByTestId("settings-navbar");
+    await waitFor(() => {
+      expect(within(navbar).getByText("Billing")).toBeInTheDocument();
+    });
     sectionsToInclude.forEach((section) => {
       const sectionElement = within(navbar).getByText(section, {
         exact: false, // case insensitive
@@ -325,6 +353,11 @@ describe("Settings Screen", () => {
       // Use Zustand store for selected org ID
       useSelectedOrganizationStore.setState({ organizationId: "1" });
 
+      // Mock getMe so getActiveOrganizationUser returns admin
+      vi.spyOn(organizationService, "getMe").mockResolvedValue(
+        createMockUser({ role: "admin", org_id: "1" }),
+      );
+
       // Act: Call clientLoader directly with the REAL route path (as defined in routes.ts)
       const request = new Request("http://localhost/settings/org-members");
       // @ts-expect-error - test only needs request and params, not full loader args
@@ -462,12 +495,17 @@ describe("Settings Screen", () => {
 
     it("should redirect away from /settings/org when personal org is selected in Zustand store", async () => {
       // Arrange: Set up config and organizations in query client
-      mockQueryClient.setQueryData(["config"], { APP_MODE: "saas" });
+      mockQueryClient.setQueryData(["web-client-config"], { app_mode: "saas" });
       mockQueryClient.setQueryData(["organizations"], [MOCK_PERSONAL_ORG]);
 
       // Set org ID ONLY in Zustand store (not in query client)
       // This tests that clientLoader reads from the correct source
       useSelectedOrganizationStore.setState({ organizationId: "1" });
+
+      // Mock getMe so getActiveOrganizationUser returns admin
+      vi.spyOn(organizationService, "getMe").mockResolvedValue(
+        createMockUser({ role: "admin", org_id: "1" }),
+      );
 
       // Act: Call clientLoader directly
       const request = new Request("http://localhost/settings/org");
@@ -490,6 +528,11 @@ describe("Settings Screen", () => {
 
       // Set org ID ONLY in Zustand store (not in query client)
       useSelectedOrganizationStore.setState({ organizationId: "2" });
+
+      // Mock getMe so getActiveOrganizationUser returns admin
+      vi.spyOn(organizationService, "getMe").mockResolvedValue(
+        createMockUser({ role: "admin", org_id: "2" }),
+      );
 
       // Act: Call clientLoader directly
       const request = new Request("http://localhost/settings/billing");

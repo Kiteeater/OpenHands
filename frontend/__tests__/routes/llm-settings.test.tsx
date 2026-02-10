@@ -13,7 +13,7 @@ import * as ToastHandlers from "#/utils/custom-toast-handlers";
 import OptionService from "#/api/option-service/option-service.api";
 import { organizationService } from "#/api/organization-service/organization-service.api";
 import { useSelectedOrganizationStore } from "#/stores/selected-organization-store";
-import type { OrganizationUserRole, OrganizationMember } from "#/types/org";
+import type { OrganizationMember } from "#/types/org";
 
 // Mock react-router hooks
 const mockUseSearchParams = vi.fn();
@@ -145,11 +145,11 @@ describe("Content", () => {
       renderLlmSettingsScreen();
       await screen.findByTestId("llm-settings-screen");
 
-      const basicFom = screen.getByTestId("llm-settings-form-basic");
-      within(basicFom).getByTestId("llm-provider-input");
-      within(basicFom).getByTestId("llm-model-input");
-      within(basicFom).getByTestId("llm-api-key-input");
-      within(basicFom).getByTestId("llm-api-key-help-anchor");
+      const basicForm = screen.getByTestId("llm-settings-form-basic");
+      within(basicForm).getByTestId("llm-provider-input");
+      within(basicForm).getByTestId("llm-model-input");
+      within(basicForm).getByTestId("llm-api-key-input");
+      within(basicForm).getByTestId("llm-api-key-help-anchor");
     });
 
     it("should render the default values if non exist", async () => {
@@ -1414,52 +1414,8 @@ describe("Role-based permissions", () => {
       }
     });
 
-    it("should disable all input fields in advanced view", async () => {
-      // Arrange
-      renderLlmSettingsScreen("2", memberData);
-
-      // Act
-      await screen.findByTestId("llm-settings-screen");
-      const advancedSwitch = screen.getByTestId("advanced-settings-switch");
-      await userEvent.click(advancedSwitch);
-      const advancedForm = await screen.findByTestId(
-        "llm-settings-form-advanced",
-      );
-
-      // Assert
-      const modelInput = within(advancedForm).getByTestId(
-        "llm-custom-model-input",
-      );
-      const baseUrlInput = within(advancedForm).getByTestId("base-url-input");
-      const condenserSwitch = within(advancedForm).getByTestId(
-        "enable-memory-condenser-switch",
-      );
-      const confirmationSwitch = within(advancedForm).getByTestId(
-        "enable-confirmation-mode-switch",
-      );
-
-      await waitFor(() => {
-        expect(modelInput).toBeDisabled();
-        expect(baseUrlInput).toBeDisabled();
-        expect(condenserSwitch).toBeDisabled();
-        expect(confirmationSwitch).toBeDisabled();
-      });
-
-      // API key input may be hidden if OpenHands provider is selected in SaaS mode
-      // If it exists, it should be disabled
-      const apiKeyInput =
-        within(advancedForm).queryByTestId("llm-api-key-input");
-      if (apiKeyInput) {
-        expect(apiKeyInput).toBeDisabled();
-      }
-
-      // Agent input is only visible in non-SaaS mode and when V1 is not enabled
-      // If it exists, it should be disabled
-      const agentInput = within(advancedForm).queryByTestId("agent-input");
-      if (agentInput) {
-        expect(agentInput).toBeDisabled();
-      }
-    });
+    // Note: No "should disable all input fields in advanced view" test for members
+    // because members cannot access the advanced view (the toggle is disabled).
 
     it("should not render submit button", async () => {
       // Arrange
@@ -1473,63 +1429,25 @@ describe("Role-based permissions", () => {
       expect(submitButton).not.toBeInTheDocument();
     });
 
-    it("should allow toggling between basic and advanced views", async () => {
+    it("should disable the advanced/basic toggle for read-only users", async () => {
       // Arrange
       renderLlmSettingsScreen("2", memberData);
 
       // Act
       await screen.findByTestId("llm-settings-screen");
       const advancedSwitch = screen.getByTestId("advanced-settings-switch");
-      const basicForm = screen.getByTestId("llm-settings-form-basic");
 
-      // Assert - toggle should be enabled
-      expect(advancedSwitch).not.toBeDisabled();
-
-      // Act - toggle to advanced
-      await userEvent.click(advancedSwitch);
-      const advancedForm = await screen.findByTestId(
-        "llm-settings-form-advanced",
-      );
-
-      // Assert - advanced form is visible
-      expect(advancedForm).toBeInTheDocument();
-      expect(basicForm).not.toBeInTheDocument();
-
-      // Act - toggle back to basic
-      await userEvent.click(advancedSwitch);
-      const basicFormAgain = await screen.findByTestId(
-        "llm-settings-form-basic",
-      );
-
-      // Assert - basic form is visible again
-      expect(basicFormAgain).toBeInTheDocument();
-      expect(
-        screen.queryByTestId("llm-settings-form-advanced"),
-      ).not.toBeInTheDocument();
-    });
-
-    it("should disable security analyzer dropdown when confirmation mode is enabled", async () => {
-      // Arrange
-      const getSettingsSpy = vi.spyOn(SettingsService, "getSettings");
-      getSettingsSpy.mockResolvedValue({
-        ...MOCK_DEFAULT_USER_SETTINGS,
-        confirmation_mode: true,
-      });
-
-      renderLlmSettingsScreen("2", memberData);
-
-      // Act
-      await screen.findByTestId("llm-settings-screen");
-      const advancedSwitch = screen.getByTestId("advanced-settings-switch");
-      await userEvent.click(advancedSwitch);
-      await screen.findByTestId("llm-settings-form-advanced");
-
-      // Assert
-      const securityAnalyzer = screen.getByTestId("security-analyzer-input");
+      // Assert - toggle should be disabled for members who lack edit_llm_settings
       await waitFor(() => {
-        expect(securityAnalyzer).toBeDisabled();
+        expect(advancedSwitch).toBeDisabled();
       });
+
+      // Basic form should remain visible (members can't switch to advanced)
+      expect(
+        screen.getByTestId("llm-settings-form-basic"),
+      ).toBeInTheDocument();
     });
+
   });
 
   describe("Owner role (full access)", () => {
@@ -1581,6 +1499,10 @@ describe("Role-based permissions", () => {
       // Act
       await screen.findByTestId("llm-settings-screen");
       const advancedSwitch = screen.getByTestId("advanced-settings-switch");
+
+      // Assert - owners can toggle between views
+      expect(advancedSwitch).not.toBeDisabled();
+
       await userEvent.click(advancedSwitch);
       const advancedForm = await screen.findByTestId(
         "llm-settings-form-advanced",
@@ -1676,6 +1598,12 @@ describe("Role-based permissions", () => {
         expect(saveSettingsSpy).toHaveBeenCalled();
       });
     });
+
+    // Note: The former "should disable security analyzer dropdown when confirmation mode
+    // is enabled" test was removed. It was in the member block and only passed because
+    // members have isReadOnly=true (all fields disabled), not because confirmation mode
+    // disables the analyzer. For owners/admins, the security analyzer is enabled
+    // regardless of confirmation mode.
   });
 
   describe("Admin role (full access)", () => {
@@ -1727,6 +1655,10 @@ describe("Role-based permissions", () => {
       // Act
       await screen.findByTestId("llm-settings-screen");
       const advancedSwitch = screen.getByTestId("advanced-settings-switch");
+
+      // Assert - admins can toggle between views
+      expect(advancedSwitch).not.toBeDisabled();
+
       await userEvent.click(advancedSwitch);
       const advancedForm = await screen.findByTestId(
         "llm-settings-form-advanced",
@@ -1822,5 +1754,16 @@ describe("Role-based permissions", () => {
         expect(saveSettingsSpy).toHaveBeenCalled();
       });
     });
+  });
+});
+
+describe("clientLoader permission checks", () => {
+  it("should export a clientLoader for route protection", async () => {
+    // This test verifies the clientLoader is exported for consistency with other routes
+    // Note: All roles have view_llm_settings permission, so this guard ensures
+    // the route is protected and can be restricted in the future if needed
+    const { clientLoader } = await import("#/routes/llm-settings");
+    expect(clientLoader).toBeDefined();
+    expect(typeof clientLoader).toBe("function");
   });
 });
