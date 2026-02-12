@@ -32,6 +32,7 @@ from typing import Any, Dict, List, Optional
 
 import resend
 from keycloak.exceptions import KeycloakError
+from resend.exceptions import RateLimitError, ResendError
 from server.auth.token_manager import get_keycloak_admin
 from tenacity import (
     retry,
@@ -41,6 +42,9 @@ from tenacity import (
 )
 
 from openhands.core.logger import openhands_logger as logger
+
+# HTTP status codes that should trigger a retry
+RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 
 # Get Keycloak configuration from environment variables
 KEYCLOAK_SERVER_URL = os.environ.get('KEYCLOAK_SERVER_URL', '')
@@ -114,28 +118,41 @@ def is_valid_email(email: str) -> bool:
     return bool(EMAIL_REGEX.match(email))
 
 
-def is_rate_limit_error(exception: BaseException) -> bool:
-    """Check if an exception is a rate limit error.
+def _is_retryable_resend_error(exception: BaseException) -> bool:
+    """Check if an exception is retryable.
+
+    Retryable errors include:
+    - Rate limit errors (429)
+    - Server errors (500, 502, 503, 504)
+    - Connection/timeout errors (wrapped in ResendError or raised directly)
 
     Args:
         exception: The exception to check.
 
     Returns:
-        True if the exception is a rate limit error, False otherwise.
+        True if the exception should be retried, False otherwise.
     """
-    # Check for Resend-specific rate limit exception via status_code attribute
-    if hasattr(exception, 'status_code'):
-        return exception.status_code == 429
-    # Fallback to string check for other exception types
-    error_str = str(exception).lower()
-    return '429' in error_str or 'rate limit' in error_str
-
-
-def _is_retryable_resend_error(exception: BaseException) -> bool:
-    """Check if an exception is retryable (rate limit or connection error)."""
-    if isinstance(exception, (ConnectionError, TimeoutError)):
+    # Check for Resend's RateLimitError directly
+    if isinstance(exception, RateLimitError):
         return True
-    return is_rate_limit_error(exception)
+
+    # Check for ResendError with retryable status codes
+    if isinstance(exception, ResendError):
+        # ResendError has a 'code' attribute for HTTP status code
+        if hasattr(exception, 'code'):
+            try:
+                status_code = int(exception.code)
+                if status_code in RETRYABLE_STATUS_CODES:
+                    return True
+            except (ValueError, TypeError):
+                pass
+
+    # Check for connection/timeout errors (can be raised by underlying HTTP client)
+    # These are Python built-in exceptions that requests library can raise
+    if isinstance(exception, (ConnectionError, TimeoutError, OSError)):
+        return True
+
+    return False
 
 
 def get_keycloak_users(offset: int = 0, limit: int = 100) -> List[Dict[str, Any]]:
