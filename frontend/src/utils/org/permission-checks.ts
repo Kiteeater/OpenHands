@@ -36,8 +36,8 @@ export const getAvailableRolesAUserCanAssign = (
   userPermissions: PermissionKey[],
 ): OrganizationUserRole[] => {
   const availableRoles: OrganizationUserRole[] = [];
-  if (userPermissions.includes("change_user_role:member")) {
-    availableRoles.push("member");
+  if (userPermissions.includes("change_user_role:user")) {
+    availableRoles.push("user");
   }
   if (userPermissions.includes("change_user_role:admin")) {
     availableRoles.push("admin");

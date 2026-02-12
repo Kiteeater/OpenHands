@@ -121,18 +121,7 @@ describe("Manage Org Route", () => {
   };
 
   // Helper function to set up user mock
-  const setupUserMock = (userData: {
-    org_id: string;
-    user_id: string;
-    email: string;
-    role: "owner" | "admin" | "member";
-    llm_api_key: string;
-    max_iterations: number;
-    llm_model: string;
-    llm_api_key_for_byor: string | null;
-    llm_base_url: string;
-    status: "active" | "invited" | "inactive";
-  }) => {
+  const setupUserMock = (userData: OrganizationMember) => {
     getMeSpy.mockResolvedValue(userData);
   };
 
@@ -756,12 +745,12 @@ describe("Manage Org Route", () => {
       expect(deleteButton).not.toBeInTheDocument();
     });
 
-    it("should not show delete organization button when user lacks canDeleteOrganization permission ('Member' role)", async () => {
+    it("should not show delete organization button when user lacks canDeleteOrganization permission ('User' role)", async () => {
       setupUserMock({
         org_id: "1",
         user_id: "1",
         email: "test@example.com",
-        role: "member",
+        role: "user",
         llm_api_key: "**********",
         max_iterations: 20,
         llm_model: "gpt-4",

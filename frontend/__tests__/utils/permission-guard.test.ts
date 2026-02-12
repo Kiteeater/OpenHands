@@ -25,12 +25,12 @@ describe("createPermissionGuard", () => {
 
   describe("permission checking", () => {
     it("should redirect when user lacks required permission", async () => {
-      // Arrange: member lacks view_billing permission
+      // Arrange: user lacks view_billing permission
       vi.mocked(getActiveOrganizationUser).mockResolvedValue({
         org_id: "org-1",
         user_id: "user-1",
         email: "test@example.com",
-        role: "member",
+        role: "user",
         llm_api_key: "",
         max_iterations: 100,
         llm_model: "gpt-4",
@@ -99,12 +99,12 @@ describe("createPermissionGuard", () => {
 
   describe("custom redirect path", () => {
     it("should redirect to custom path when specified", async () => {
-      // Arrange: member lacks permission
+      // Arrange: user lacks permission
       vi.mocked(getActiveOrganizationUser).mockResolvedValue({
         org_id: "org-1",
         user_id: "user-1",
         email: "test@example.com",
-        role: "member",
+        role: "user",
         llm_api_key: "",
         max_iterations: 100,
         llm_model: "gpt-4",

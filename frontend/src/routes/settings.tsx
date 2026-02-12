@@ -73,7 +73,7 @@ export const clientLoader = async ({ request }: Route.ClientLoaderArgs) => {
 
   // Org route protection: redirect if user lacks required permissions or personal org
   if (pathname === "/settings/org" || pathname === "/settings/org-members") {
-    const role = user?.role ?? "member";
+    const role = user?.role ?? "user";
     const requiredPermission =
       pathname === "/settings/org"
         ? "view_billing"

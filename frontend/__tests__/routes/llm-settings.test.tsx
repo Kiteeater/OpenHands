@@ -1375,7 +1375,7 @@ describe("Role-based permissions", () => {
       org_id: "2",
       user_id: "99",
       email: "user@example.com",
-      role: "member",
+      role: "user",
       status: "active",
       llm_api_key: "",
       max_iterations: 20,

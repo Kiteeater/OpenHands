@@ -125,7 +125,7 @@ const INITIAL_MOCK_MEMBERS: Record<string, OrganizationMember[]> = {
       org_id: "1",
       user_id: "3",
       email: "charlie@acme.org",
-      role: "member",
+      role: "user",
       llm_api_key: "**********",
       max_iterations: 20,
       llm_model: "gpt-4",
@@ -139,7 +139,7 @@ const INITIAL_MOCK_MEMBERS: Record<string, OrganizationMember[]> = {
       org_id: "2",
       user_id: "4",
       email: "tony@gamma.org",
-      role: "member",
+      role: "user",
       llm_api_key: "**********",
       max_iterations: 20,
       llm_model: "gpt-4",
@@ -189,7 +189,7 @@ const INITIAL_MOCK_MEMBERS: Record<string, OrganizationMember[]> = {
       org_id: "3",
       user_id: "8",
       email: "chuck@all-hands.dev",
-      role: "member",
+      role: "user",
       llm_api_key: "**********",
       max_iterations: 20,
       llm_model: "gpt-4",
@@ -201,7 +201,7 @@ const INITIAL_MOCK_MEMBERS: Record<string, OrganizationMember[]> = {
       org_id: "3",
       user_id: "9",
       email: "stephan@all-hands.dev",
-      role: "member",
+      role: "user",
       llm_api_key: "**********",
       max_iterations: 20,
       llm_model: "gpt-4",
@@ -213,7 +213,7 @@ const INITIAL_MOCK_MEMBERS: Record<string, OrganizationMember[]> = {
       org_id: "3",
       user_id: "10",
       email: "tim@all-hands.dev",
-      role: "member",
+      role: "user",
       llm_api_key: "**********",
       max_iterations: 20,
       llm_model: "gpt-4",
@@ -261,7 +261,7 @@ export const ORG_HANDLERS = [
       );
     }
 
-    let role: OrganizationUserRole = "member";
+    let role: OrganizationUserRole = "user";
     switch (orgId) {
       case "1": // Personal Workspace
         role = "owner";
@@ -270,13 +270,13 @@ export const ORG_HANDLERS = [
         role = "owner";
         break;
       case "3": // Beta LLC
-        role = "member";
+        role = "user";
         break;
       case "4": // All Hands AI
         role = "admin";
         break;
       default:
-        role = "member";
+        role = "user";
     }
 
     const me: OrganizationMember = {
@@ -484,7 +484,7 @@ export const ORG_HANDLERS = [
         org_id: orgId,
         user_id: String(members.length + index + 1),
         email,
-        role: "member" as const,
+        role: "user" as const,
         llm_api_key: "**********",
         max_iterations: 20,
         llm_model: "gpt-4",

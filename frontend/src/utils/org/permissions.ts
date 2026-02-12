@@ -35,7 +35,7 @@ export type PermissionKey =
   | EditLLMSettingsPermission;
 
 /* PERMISSION ARRAYS */
-const memberPerms: PermissionKey[] = [
+const userPerms: PermissionKey[] = [
   "manage_secrets",
   "manage_mcp",
   "manage_integrations",
@@ -49,7 +49,7 @@ const adminOnly: PermissionKey[] = [
   "view_billing",
   "add_credits",
   "invite_user_to_organization",
-  "change_user_role:member",
+  "change_user_role:user",
   "change_user_role:admin",
 ];
 
@@ -59,11 +59,11 @@ const ownerOnly: PermissionKey[] = [
   "change_user_role:owner",
 ];
 
-const adminPerms: PermissionKey[] = [...memberPerms, ...adminOnly];
+const adminPerms: PermissionKey[] = [...userPerms, ...adminOnly];
 const ownerPerms: PermissionKey[] = [...adminPerms, ...ownerOnly];
 
 export const rolePermissions: Record<OrganizationUserRole, PermissionKey[]> = {
   owner: ownerPerms,
   admin: adminPerms,
-  member: memberPerms,
+  user: userPerms,
 };

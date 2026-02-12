@@ -61,7 +61,7 @@ describe("Settings Screen", () => {
     org_id: "org-1",
     user_id: "user-1",
     email: "test@example.com",
-    role: "member",
+    role: "user",
     llm_api_key: "",
     max_iterations: 100,
     llm_model: "gpt-4",

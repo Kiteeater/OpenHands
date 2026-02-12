@@ -76,7 +76,7 @@ describe("clientLoader permission checks", () => {
     org_id: "org-1",
     user_id: "user-1",
     email: "test@example.com",
-    role: "member",
+    role: "user",
     llm_api_key: "",
     max_iterations: 100,
     llm_model: "gpt-4",
@@ -101,7 +101,7 @@ describe("clientLoader permission checks", () => {
 
   it("should allow members to access secrets settings (all roles have manage_secrets)", async () => {
     // Arrange
-    seedActiveUser({ role: "member" });
+    seedActiveUser({ role: "user" });
 
     const RouterStub = createRoutesStub([
       {

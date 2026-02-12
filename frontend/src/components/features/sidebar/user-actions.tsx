@@ -59,7 +59,7 @@ export function UserActions({ user, isLoading }: UserActionsProps) {
         >
           <UserContextMenu
             key={menuResetCount}
-            type={me?.role ?? "member"}
+            type={me?.role ?? "user"}
             onClose={closeAccountMenu}
           />
         </div>

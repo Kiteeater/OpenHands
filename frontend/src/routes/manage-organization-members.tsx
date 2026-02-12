@@ -3,6 +3,7 @@ import ReactDOM from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Plus } from "lucide-react";
 import { InviteOrganizationMemberModal } from "#/components/features/org/invite-organization-member-modal";
+import { ConfirmRoleChangeModal } from "#/components/features/org/confirm-role-change-modal";
 import { useOrganizationMembers } from "#/hooks/query/use-organization-members";
 import { OrganizationMember, OrganizationUserRole } from "#/types/org";
 import { OrganizationMemberListItem } from "#/components/features/org/organization-member-list-item";
@@ -24,17 +25,46 @@ function ManageOrganizationMembers() {
   const { t } = useTranslation();
   const { data: organizationMembers } = useOrganizationMembers();
   const { data: user } = useMe();
-  const { mutate: updateMemberRole } = useUpdateMemberRole();
+  const { mutate: updateMemberRole, isPending } = useUpdateMemberRole();
   const { mutate: removeMember } = useRemoveMember();
   const [inviteModalOpen, setInviteModalOpen] = React.useState(false);
+  const [pendingRoleChange, setPendingRoleChange] = React.useState<{
+    userId: string;
+    email: string;
+    role: OrganizationUserRole;
+  } | null>(null);
 
-  const currentUserRole = user?.role ?? "member";
+  const currentUserRole = user?.role ?? "user";
 
   const { hasPermission } = usePermission(currentUserRole);
   const hasPermissionToInvite = hasPermission("invite_user_to_organization");
 
-  const handleRoleSelectionClick = (id: string, role: OrganizationUserRole) => {
-    updateMemberRole({ userId: id, role });
+  const handleRoleSelectionClick = (
+    member: OrganizationMember,
+    role: OrganizationUserRole,
+  ) => {
+    if (role === member.role) return;
+
+    setPendingRoleChange({
+      userId: member.user_id,
+      email: member.email,
+      role,
+    });
+  };
+
+  const handleConfirmRoleChange = () => {
+    if (pendingRoleChange) {
+      updateMemberRole(
+        { userId: pendingRoleChange.userId, role: pendingRoleChange.role },
+        {
+          onSuccess: () => setPendingRoleChange(null),
+        },
+      );
+    }
+  };
+
+  const handleCancelRoleChange = () => {
+    setPendingRoleChange(null);
   };
 
   const handleRemoveMember = (userId: string) => {
@@ -76,6 +106,16 @@ function ManageOrganizationMembers() {
           document.getElementById("portal-root") || document.body,
         )}
 
+      {pendingRoleChange && (
+        <ConfirmRoleChangeModal
+          email={pendingRoleChange.email}
+          newRole={pendingRoleChange.role}
+          isPending={isPending}
+          onConfirm={handleConfirmRoleChange}
+          onCancel={handleCancelRoleChange}
+        />
+      )}
+
       {organizationMembers && (
         <ul>
           {organizationMembers.map((member) => (
@@ -90,9 +130,7 @@ function ManageOrganizationMembers() {
                 status={member.status}
                 hasPermissionToChangeRole={canAssignUserRole(member)}
                 availableRolesToChangeTo={availableRolesToChangeTo}
-                onRoleChange={(role) =>
-                  handleRoleSelectionClick(member.user_id, role)
-                }
+                onRoleChange={(role) => handleRoleSelectionClick(member, role)}
                 onRemove={() => handleRemoveMember(member.user_id)}
               />
             </li>

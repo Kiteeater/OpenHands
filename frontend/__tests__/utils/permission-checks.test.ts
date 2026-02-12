@@ -39,21 +39,21 @@ describe("getAvailableRolesAUserCanAssign", () => {
 
     it("returns only roles the user has permission for", () => {
         const userPermissions: PermissionKey[] = [
-            "change_user_role:member",
+            "change_user_role:user",
             "change_user_role:admin",
         ];
         const result = getAvailableRolesAUserCanAssign(userPermissions);
-        expect(result.sort()).toEqual(["admin", "member"].sort());
+        expect(result.sort()).toEqual(["admin", "user"].sort());
     });
 
     it("returns all roles if user has all permissions", () => {
         const allPermissions: PermissionKey[] = [
-            "change_user_role:member",
+            "change_user_role:user",
             "change_user_role:admin",
             "change_user_role:owner",
         ];
         const result = getAvailableRolesAUserCanAssign(allPermissions);
-        expect(result.sort()).toEqual(["member", "admin", "owner"].sort());
+        expect(result.sort()).toEqual(["user", "admin", "owner"].sort());
     });
 });
 

@@ -71,7 +71,7 @@ describe("Billing Route", () => {
     org_id: "org-1",
     user_id: "user-1",
     email: "test@example.com",
-    role: "member",
+    role: "user",
     llm_api_key: "",
     max_iterations: 100,
     llm_model: "gpt-4",
@@ -144,7 +144,7 @@ describe("Billing Route", () => {
     it("should redirect members to /settings/user when accessing billing directly", async () => {
       // Arrange
       setupSaasMode();
-      seedActiveUser({ role: "member" });
+      seedActiveUser({ role: "user" });
 
       const RouterStub = createRoutesStub([
         {

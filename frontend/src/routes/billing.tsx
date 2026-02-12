@@ -24,7 +24,7 @@ export const clientLoader = async () => {
     return redirect("/settings/user");
   }
 
-  const userRole = user.role ?? "member";
+  const userRole = user.role ?? "user";
 
   let config = queryClient.getQueryData<WebClientConfig>(["web-client-config"]);
   if (!config) {
@@ -46,7 +46,7 @@ function BillingSettingsScreen() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { trackCreditsPurchased } = useTracking();
   const { data: me } = useMe();
-  const { hasPermission } = usePermission(me?.role ?? "member");
+  const { hasPermission } = usePermission(me?.role ?? "user");
   const canAddCredits = !!me && hasPermission("add_credits");
   const checkoutStatus = searchParams.get("checkout");
 

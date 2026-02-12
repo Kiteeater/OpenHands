@@ -49,7 +49,7 @@ export function UserContextMenu({ type, onClose }: UserContextMenuProps) {
   const [inviteMemberModalIsOpen, setInviteMemberModalIsOpen] =
     React.useState(false);
 
-  const isMember = type === "member";
+  const isMember = type === "user";
 
   const handleLogout = () => {
     logout();

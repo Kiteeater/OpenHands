@@ -215,7 +215,7 @@ function ManageOrg() {
   const { data: organizationPaymentInfo } = useOrganizationPaymentInfo();
   const { data: config } = useConfig();
 
-  const role = me?.role ?? "member";
+  const role = me?.role ?? "user";
   const { hasPermission } = usePermission(role);
 
   const [addCreditsFormVisible, setAddCreditsFormVisible] =

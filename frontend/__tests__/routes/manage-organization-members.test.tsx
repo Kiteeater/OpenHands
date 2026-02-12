@@ -15,6 +15,7 @@ import {
   resetOrgsAndMembersMockData,
   MOCK_TEAM_ORG_ACME,
 } from "#/mocks/org-handlers";
+import { OrganizationMember } from "#/types/org";
 import OptionService from "#/api/option-service/option-service.api";
 import { useSelectedOrganizationStore } from "#/stores/selected-organization-store";
 
@@ -189,18 +190,7 @@ describe("Manage Organization Members Route", () => {
 
   // Helper function to setup test with user and organization
   const setupTestWithUserAndOrg = async (
-    userData: {
-      org_id: string;
-      user_id: string;
-      email: string;
-      role: "owner" | "admin" | "member";
-      llm_api_key: string;
-      max_iterations: number;
-      llm_model: string;
-      llm_api_key_for_byor: string | null;
-      llm_base_url: string;
-      status: "active" | "invited" | "inactive";
-    },
+    userData: OrganizationMember,
     orgIndex: number,
   ) => {
     getMeSpy.mockResolvedValue(userData);
@@ -217,18 +207,7 @@ describe("Manage Organization Members Route", () => {
 
   // Helper function to verify role change is not permitted
   const verifyRoleChangeNotPermitted = async (
-    userData: {
-      org_id: string;
-      user_id: string;
-      email: string;
-      role: "owner" | "admin" | "member";
-      llm_api_key: string;
-      max_iterations: number;
-      llm_model: string;
-      llm_api_key_for_byor: string | null;
-      llm_base_url: string;
-      status: "active" | "invited" | "inactive";
-    },
+    userData: OrganizationMember,
     orgIndex: number,
     targetMemberIndex: number,
     expectedRoleText: string,
@@ -537,7 +516,7 @@ describe("Manage Organization Members Route", () => {
           org_id: "1",
           user_id: "4",
           email: "tom@acme.org",
-          role: "member",
+          role: "user",
           llm_api_key: "**********",
           max_iterations: 20,
           llm_model: "gpt-4",
@@ -603,7 +582,7 @@ describe("Manage Organization Members Route", () => {
         org_id: "1",
         user_id: "1",
         email: "test@example.com",
-        role: "member" as const,
+        role: "user" as const,
         llm_api_key: "**********",
         max_iterations: 20,
         llm_model: "gpt-4",

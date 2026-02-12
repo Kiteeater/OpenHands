@@ -73,7 +73,7 @@ function LlmSettingsScreen() {
   const { data: settings, isLoading, isFetching } = useSettings();
   const { data: config } = useConfig();
   const { data: me } = useMe();
-  const { hasPermission } = usePermission(me?.role ?? "member");
+  const { hasPermission } = usePermission(me?.role ?? "user");
 
   // Determine if user is read-only (members can only view, owners and admins can edit)
   const isReadOnly = !hasPermission("edit_llm_settings");

@@ -21,7 +21,7 @@ import { useOrgTypeAndAccess } from "./use-org-type-and-access";
 export function useSettingsNavItems(): SettingsNavItem[] {
   const { data: config } = useConfig();
   const { data: user } = useMe();
-  const userRole: OrganizationUserRole = user?.role ?? "member";
+  const userRole: OrganizationUserRole = user?.role ?? "user";
   const { hasPermission } = usePermission(userRole);
   const { isPersonalOrg, isTeamOrg, organizationId } = useOrgTypeAndAccess();
 
