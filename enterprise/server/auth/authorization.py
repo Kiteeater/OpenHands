@@ -1,13 +1,13 @@
 """
-Permission-based authorization dependencies for API endpoints.
+Permission-based authorization dependencies for API endpoints (SAAS mode).
 
 This module provides FastAPI dependencies for checking user permissions
 within organizations. It uses a permission-based authorization model where
 roles (owner, admin, member) are mapped to specific permissions.
 
-Permissions are defined in the Permission enum and mapped to roles via
-ROLE_PERMISSIONS. This allows fine-grained access control while maintaining
-the familiar role-based hierarchy.
+This is the SAAS/enterprise implementation that performs real authorization
+checks. It imports the Permission and RoleName enums from the OSS module
+and provides actual enforcement of permissions.
 
 Usage:
     from server.auth.authorization import (
@@ -36,7 +36,6 @@ Usage:
         ...
 """
 
-from enum import Enum
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
@@ -45,109 +44,31 @@ from storage.role import Role
 from storage.role_store import RoleStore
 
 from openhands.core.logger import openhands_logger as logger
+from openhands.server.auth.authorization import (
+    Permission,
+    ROLE_PERMISSIONS,
+    RoleName,
+)
+from openhands.server.auth.authorization import (
+    get_role_permissions,
+)
 from openhands.server.user_auth import get_user_id
 
-
-class Permission(str, Enum):
-    """Permissions that can be assigned to roles."""
-
-    # Secrets
-    MANAGE_SECRETS = 'manage_secrets'
-
-    # MCP
-    MANAGE_MCP = 'manage_mcp'
-
-    # Integrations
-    MANAGE_INTEGRATIONS = 'manage_integrations'
-
-    # Application Settings
-    MANAGE_APPLICATION_SETTINGS = 'manage_application_settings'
-
-    # API Keys
-    MANAGE_API_KEYS = 'manage_api_keys'
-
-    # LLM Settings
-    VIEW_LLM_SETTINGS = 'view_llm_settings'
-    EDIT_LLM_SETTINGS = 'edit_llm_settings'
-
-    # Billing
-    VIEW_BILLING = 'view_billing'
-    ADD_CREDITS = 'add_credits'
-
-    # Organization Members
-    INVITE_USER_TO_ORGANIZATION = 'invite_user_to_organization'
-    CHANGE_USER_ROLE_MEMBER = 'change_user_role:member'
-    CHANGE_USER_ROLE_ADMIN = 'change_user_role:admin'
-    CHANGE_USER_ROLE_OWNER = 'change_user_role:owner'
-
-    # Organization Management
-    CHANGE_ORGANIZATION_NAME = 'change_organization_name'
-    DELETE_ORGANIZATION = 'delete_organization'
-
-
-class RoleName(str, Enum):
-    """Role names used in the system."""
-
-    OWNER = 'owner'
-    ADMIN = 'admin'
-    MEMBER = 'member'
-
-
-# Permission mappings for each role
-ROLE_PERMISSIONS: dict[RoleName, frozenset[Permission]] = {
-    RoleName.OWNER: frozenset(
-        [
-            # Settings (Full access)
-            Permission.MANAGE_SECRETS,
-            Permission.MANAGE_MCP,
-            Permission.MANAGE_INTEGRATIONS,
-            Permission.MANAGE_APPLICATION_SETTINGS,
-            Permission.MANAGE_API_KEYS,
-            Permission.VIEW_LLM_SETTINGS,
-            Permission.EDIT_LLM_SETTINGS,
-            Permission.VIEW_BILLING,
-            Permission.ADD_CREDITS,
-            # Organization Members
-            Permission.INVITE_USER_TO_ORGANIZATION,
-            Permission.CHANGE_USER_ROLE_MEMBER,
-            Permission.CHANGE_USER_ROLE_ADMIN,
-            Permission.CHANGE_USER_ROLE_OWNER,
-            # Organization Management (Owner only)
-            Permission.CHANGE_ORGANIZATION_NAME,
-            Permission.DELETE_ORGANIZATION,
-        ]
-    ),
-    RoleName.ADMIN: frozenset(
-        [
-            # Settings (Full access)
-            Permission.MANAGE_SECRETS,
-            Permission.MANAGE_MCP,
-            Permission.MANAGE_INTEGRATIONS,
-            Permission.MANAGE_APPLICATION_SETTINGS,
-            Permission.MANAGE_API_KEYS,
-            Permission.VIEW_LLM_SETTINGS,
-            Permission.EDIT_LLM_SETTINGS,
-            Permission.VIEW_BILLING,
-            Permission.ADD_CREDITS,
-            # Organization Members
-            Permission.INVITE_USER_TO_ORGANIZATION,
-            Permission.CHANGE_USER_ROLE_MEMBER,
-            Permission.CHANGE_USER_ROLE_ADMIN,
-        ]
-    ),
-    RoleName.MEMBER: frozenset(
-        [
-            # Settings (Full access)
-            Permission.MANAGE_SECRETS,
-            Permission.MANAGE_MCP,
-            Permission.MANAGE_INTEGRATIONS,
-            Permission.MANAGE_APPLICATION_SETTINGS,
-            Permission.MANAGE_API_KEYS,
-            # LLM Settings (View only)
-            Permission.VIEW_LLM_SETTINGS,
-        ]
-    ),
-}
+# Re-export enums and constants from OSS module for convenience
+__all__ = [
+    'Permission',
+    'RoleName',
+    'ROLE_PERMISSIONS',
+    'get_role_permissions',
+    'has_permission',
+    'get_user_org_role',
+    'has_required_role',
+    'require_permission',
+    'require_org_role',
+    'require_org_user',
+    'require_org_admin',
+    'require_org_owner',
+]
 
 
 def get_user_org_role(user_id: str, org_id: UUID) -> Role | None:
@@ -168,23 +89,6 @@ def get_user_org_role(user_id: str, org_id: UUID) -> Role | None:
         return None
 
     return RoleStore.get_role_by_id(org_member.role_id)
-
-
-def get_role_permissions(role_name: str) -> frozenset[Permission]:
-    """
-    Get the permissions for a role.
-
-    Args:
-        role_name: Name of the role
-
-    Returns:
-        Set of permissions for the role
-    """
-    try:
-        role_enum = RoleName(role_name)
-        return ROLE_PERMISSIONS.get(role_enum, frozenset())
-    except ValueError:
-        return frozenset()
 
 
 def has_permission(user_role: Role, permission: Permission) -> bool:
