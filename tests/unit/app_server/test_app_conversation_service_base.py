@@ -1169,3 +1169,53 @@ class TestLoadAndMergeAllSkills:
 
             # Assert
             assert result == []
+
+
+# =============================================================================
+# Tests for setup script/hooks path computation fix (uses repo subdirectory)
+# =============================================================================
+
+
+@pytest.mark.asyncio
+async def test_maybe_run_setup_script_uses_repo_subdirectory():
+    """Setup script path should be in cloned repo subdirectory, not workspace root."""
+    mock_user_context = Mock(spec=UserContext)
+    with patch.object(AppConversationServiceBase, '__abstractmethods__', set()):
+        service = AppConversationServiceBase(
+            init_git_in_empty_workspace=True, user_context=mock_user_context
+        )
+        mock_workspace = MockWorkspace(working_dir='/workspace/project')
+
+        await service.maybe_run_setup_script(
+            mock_workspace, selected_repository='owner/my-repo'
+        )
+
+        call_args = mock_workspace.execute_command.call_args
+        command = call_args[0][0]
+        # Bug fix: script is at /workspace/project/my-repo/.openhands/setup.sh
+        # NOT at /workspace/project/.openhands/setup.sh
+        assert '/workspace/project/my-repo/.openhands/setup.sh' in command
+
+
+@pytest.mark.asyncio
+async def test_maybe_setup_git_hooks_uses_repo_subdirectory():
+    """Git hooks should be set up in cloned repo subdirectory, not workspace root."""
+    mock_user_context = Mock(spec=UserContext)
+    with patch.object(AppConversationServiceBase, '__abstractmethods__', set()):
+        service = AppConversationServiceBase(
+            init_git_in_empty_workspace=True, user_context=mock_user_context
+        )
+        mock_workspace = MockWorkspace(working_dir='/workspace/project')
+        mock_workspace.execute_command = AsyncMock(
+            return_value=MockCommandResult(exit_code=1)
+        )
+
+        await service.maybe_setup_git_hooks(
+            mock_workspace, selected_repository='owner/my-repo'
+        )
+
+        call_args = mock_workspace.execute_command.call_args
+        cwd = call_args[0][1]
+        # Bug fix: hooks are set up in /workspace/project/my-repo
+        # NOT in /workspace/project
+        assert cwd == '/workspace/project/my-repo'
