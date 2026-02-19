@@ -668,7 +668,7 @@ async def _delete_v0_conversation(conversation_id: str, user_id: str | None) -> 
     return True
 
 
-@app.get('/conversations/{conversation_id}/remember-prompt')
+@app.get('/conversations/{conversation_id}/remember-prompt', deprecated=True)
 async def get_prompt(
     event_id: int,
     conversation_id: str = Depends(validate_conversation_id),
