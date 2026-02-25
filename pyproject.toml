@@ -316,3 +316,10 @@ lint.pydocstyle.convention = "google"
 concurrency = [ "gevent" ]
 relative_files = true
 omit = [ "enterprise/tests/*", "**/test_*" ]
+
+# Security: Exclude vulnerable pypdf2 dependency (CVE-2023-36464)
+# PyPDF2 is deprecated with no fix available. The project uses pypdf instead.
+[tool.uv]
+override-dependencies = [
+  "pypdf2 ; python_version == '0'",  # Effectively excludes pypdf2
+]
