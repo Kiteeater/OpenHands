@@ -379,9 +379,10 @@ class RemoteSandboxService(SandboxService):
         """Get a single sandbox by checking its corresponding runtime."""
         _logger.info(f'Getting sandbox with id: {sandbox_id}', stack_info=True)
         stored_sandbox = await self._get_stored_sandbox(sandbox_id)
-        _logger.info(f'Got sandbox: {json.dumps(stored_sandbox.__dict__, default=str)}')
         if stored_sandbox is None:
+            _logger.info('Got sandbox: None')
             return None
+        _logger.info(f'Got sandbox: {json.dumps(stored_sandbox.__dict__, default=str)}')
 
         runtime = None
         try:
