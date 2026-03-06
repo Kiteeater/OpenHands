@@ -1,10 +1,34 @@
 """Tests for AnalyticsContext dataclass and resolve_context factory."""
 
+import sys
+from types import ModuleType
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from openhands.analytics.analytics_context import AnalyticsContext, resolve_context
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _make_user_store_module(get_user_by_id_mock: AsyncMock) -> dict[str, ModuleType]:
+    """Build a fake ``storage.user_store`` module containing a mock UserStore.
+
+    Returns a dict suitable for ``patch.dict(sys.modules, ...)``.
+    """
+    mock_user_store_class = MagicMock()
+    mock_user_store_class.get_user_by_id = get_user_by_id_mock
+
+    user_store_mod = ModuleType('storage.user_store')
+    user_store_mod.UserStore = mock_user_store_class  # type: ignore[attr-defined]
+
+    # Ensure 'storage' parent package exists in sys.modules too.
+    storage_mod = sys.modules.get('storage') or ModuleType('storage')
+
+    return {'storage': storage_mod, 'storage.user_store': user_store_mod}
+
 
 # ---------------------------------------------------------------------------
 # AnalyticsContext dataclass tests
@@ -57,16 +81,8 @@ class TestResolveContext:
         mock_user.user_consents_to_analytics = True
         mock_user.current_org_id = 'org-abc-123'
 
-        with patch(
-            'openhands.analytics.analytics_context.UserStore',
-            new_callable=lambda: type(
-                'MockModule',
-                (),
-                {
-                    'get_user_by_id': AsyncMock(return_value=mock_user),
-                },
-            ),
-        ):
+        modules = _make_user_store_module(AsyncMock(return_value=mock_user))
+        with patch.dict(sys.modules, modules):
             ctx = await resolve_context('user-42')
 
         assert ctx.user_id == 'user-42'
@@ -81,16 +97,8 @@ class TestResolveContext:
         mock_user.user_consents_to_analytics = None
         mock_user.current_org_id = 'org-1'
 
-        with patch(
-            'openhands.analytics.analytics_context.UserStore',
-            new_callable=lambda: type(
-                'MockModule',
-                (),
-                {
-                    'get_user_by_id': AsyncMock(return_value=mock_user),
-                },
-            ),
-        ):
+        modules = _make_user_store_module(AsyncMock(return_value=mock_user))
+        with patch.dict(sys.modules, modules):
             ctx = await resolve_context('user-42')
 
         assert ctx.consented is False
@@ -102,16 +110,8 @@ class TestResolveContext:
         mock_user.user_consents_to_analytics = True
         mock_user.current_org_id = None
 
-        with patch(
-            'openhands.analytics.analytics_context.UserStore',
-            new_callable=lambda: type(
-                'MockModule',
-                (),
-                {
-                    'get_user_by_id': AsyncMock(return_value=mock_user),
-                },
-            ),
-        ):
+        modules = _make_user_store_module(AsyncMock(return_value=mock_user))
+        with patch.dict(sys.modules, modules):
             ctx = await resolve_context('user-42')
 
         assert ctx.org_id is None
@@ -119,16 +119,8 @@ class TestResolveContext:
     @pytest.mark.asyncio
     async def test_resolve_context_user_not_found(self):
         """resolve_context when UserStore returns None returns safe default."""
-        with patch(
-            'openhands.analytics.analytics_context.UserStore',
-            new_callable=lambda: type(
-                'MockModule',
-                (),
-                {
-                    'get_user_by_id': AsyncMock(return_value=None),
-                },
-            ),
-        ):
+        modules = _make_user_store_module(AsyncMock(return_value=None))
+        with patch.dict(sys.modules, modules):
             ctx = await resolve_context('nonexistent-user')
 
         assert ctx.user_id == 'nonexistent-user'
@@ -139,18 +131,10 @@ class TestResolveContext:
     @pytest.mark.asyncio
     async def test_resolve_context_user_store_raises_exception(self):
         """resolve_context when UserStore raises Exception returns safe default (no exception leaks)."""
-        with patch(
-            'openhands.analytics.analytics_context.UserStore',
-            new_callable=lambda: type(
-                'MockModule',
-                (),
-                {
-                    'get_user_by_id': AsyncMock(
-                        side_effect=RuntimeError('DB connection failed')
-                    ),
-                },
-            ),
-        ):
+        modules = _make_user_store_module(
+            AsyncMock(side_effect=RuntimeError('DB connection failed'))
+        )
+        with patch.dict(sys.modules, modules):
             ctx = await resolve_context('user-42')
 
         assert ctx.user_id == 'user-42'
@@ -161,19 +145,11 @@ class TestResolveContext:
     @pytest.mark.asyncio
     async def test_resolve_context_logs_warning_on_failure(self):
         """resolve_context logs a warning when user lookup fails."""
+        modules = _make_user_store_module(
+            AsyncMock(side_effect=RuntimeError('DB error'))
+        )
         with (
-            patch(
-                'openhands.analytics.analytics_context.UserStore',
-                new_callable=lambda: type(
-                    'MockModule',
-                    (),
-                    {
-                        'get_user_by_id': AsyncMock(
-                            side_effect=RuntimeError('DB error')
-                        ),
-                    },
-                ),
-            ),
+            patch.dict(sys.modules, modules),
             patch('openhands.analytics.analytics_context.logger') as mock_logger,
         ):
             await resolve_context('user-42')

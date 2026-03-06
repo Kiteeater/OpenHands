@@ -15,6 +15,7 @@ Usage::
         svc.capture(...)
 """
 
+from openhands.analytics.analytics_context import AnalyticsContext, resolve_context
 from openhands.analytics.analytics_service import AnalyticsService
 from openhands.server.types import AppMode
 
@@ -50,4 +51,10 @@ def get_analytics_service() -> AnalyticsService | None:
     return _analytics_service
 
 
-__all__ = ['AnalyticsService', 'get_analytics_service', 'init_analytics_service']
+__all__ = [
+    'AnalyticsContext',
+    'AnalyticsService',
+    'get_analytics_service',
+    'init_analytics_service',
+    'resolve_context',
+]
