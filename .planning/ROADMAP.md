@@ -50,7 +50,10 @@ Plans:
   2. All route handlers call typed event methods (e.g., track_conversation_created) instead of building property dicts and calling generic track()
   3. auth.py and oauth_device.py both call identify_user instead of duplicating set_person_properties + group_identify blocks
   4. Unit tests cover the new AnalyticsContext, typed event methods, and identify_user patterns
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 06-01-PLAN.md — Migrate auth.py and oauth_device.py to resolve_context, identify_user, and typed methods
+- [ ] 06-02-PLAN.md — Migrate conversation_callback_utils.py, billing.py, onboarding.py, and orgs.py to typed methods
 
 ### Phase 7: Frontend Health
 **Goal**: PostHog captures frontend performance and error data automatically, with a dashboard to monitor it
@@ -75,5 +78,5 @@ Phases execute in numeric order: 5 → 6 → 7
 | 3. Client Cleanup | v1.0 | 3/3 | Complete | 2026-03-03 |
 | 4. Activation and Dashboards | v1.0 | 3/3 | Complete | 2026-03-05 |
 | 5. Foundation | v1.1 | 0/2 | Planning complete | - |
-| 6. Migration | v1.1 | 0/0 | Not started | - |
+| 6. Migration | v1.1 | 0/2 | Planning complete | - |
 | 7. Frontend Health | v1.1 | 0/0 | Not started | - |
