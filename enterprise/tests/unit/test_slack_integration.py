@@ -7,6 +7,7 @@ from integrations.utils import infer_repo_from_message
 from storage.slack_user import SlackUser
 
 from openhands.integrations.service_types import ProviderTimeoutError, Repository
+# Note: ProviderTimeoutError is used in TestRepoQueryTimeoutHandling tests
 from openhands.server.user_auth.user_auth import UserAuth
 
 
@@ -223,19 +224,19 @@ class TestRepoSearchBehavior:
         assert call_args[1]['ephemeral'] is True
 
     @patch.object(SlackManager, 'send_message', new_callable=AsyncMock)
-    @patch.object(SlackManager, '_search_repositories', new_callable=AsyncMock)
-    async def test_single_match_proceeds_with_job(
+    @patch.object(SlackManager, '_verify_repository', new_callable=AsyncMock)
+    async def test_repo_found_proceeds_with_job(
         self,
-        mock_search_repositories,
+        mock_verify_repository,
         mock_send_message,
         slack_manager,
         slack_new_conversation_view_with_repo,
     ):
-        """Test that when a single repo matches, the job proceeds."""
-        # Setup: _search_repositories returns exactly one match
-        mock_search_repositories.return_value = [
-            Repository(id='123', full_name='OpenHands/OpenHands'),
-        ]
+        """Test that when the specified repo is found, the job proceeds."""
+        # Setup: _verify_repository returns the repository
+        mock_verify_repository.return_value = Repository(
+            id='123', full_name='OpenHands/OpenHands'
+        )
 
         # Execute
         result = await slack_manager.is_job_requested(
@@ -255,56 +256,19 @@ class TestRepoSearchBehavior:
         mock_send_message.assert_not_called()
 
     @patch.object(SlackManager, 'send_message', new_callable=AsyncMock)
-    @patch.object(SlackManager, '_search_repositories', new_callable=AsyncMock)
-    async def test_multiple_matches_asks_for_clarification(
-        self,
-        mock_search_repositories,
-        mock_send_message,
-        slack_manager,
-        slack_new_conversation_view_with_repo,
-    ):
-        """Test that when multiple repos match, user is asked to clarify."""
-        # Setup: _search_repositories returns multiple matches
-        mock_search_repositories.return_value = [
-            Repository(id='123', full_name='OpenHands/OpenHands'),
-            Repository(id='456', full_name='OpenHands/OpenHands-Web'),
-        ]
-
-        # Execute
-        result = await slack_manager.is_job_requested(
-            MagicMock(), slack_new_conversation_view_with_repo
-        )
-
-        # Verify: should return False (need clarification)
-        assert result is False
-
-        # Verify: send_message was called with clarification message
-        mock_send_message.assert_called_once()
-        call_args = mock_send_message.call_args
-
-        # Check the message content
-        message = call_args[0][0]
-        assert 'multiple repositories' in message.lower()
-        assert 'OpenHands/OpenHands' in message
-        assert 'OpenHands/OpenHands-Web' in message
-
-        # Check it was sent as ephemeral
-        assert call_args[1]['ephemeral'] is True
-
-    @patch.object(SlackManager, 'send_message', new_callable=AsyncMock)
     @patch.object(SlackManager, '_get_repositories', new_callable=AsyncMock)
-    @patch.object(SlackManager, '_search_repositories', new_callable=AsyncMock)
-    async def test_no_matches_falls_back_to_repo_dropdown(
+    @patch.object(SlackManager, '_verify_repository', new_callable=AsyncMock)
+    async def test_repo_not_found_falls_back_to_dropdown(
         self,
-        mock_search_repositories,
+        mock_verify_repository,
         mock_get_repositories,
         mock_send_message,
         slack_manager,
         slack_new_conversation_view_with_repo,
     ):
-        """Test that when no repos match search, it falls back to showing the repo dropdown."""
-        # Setup: _search_repositories returns empty list, _get_repositories returns some repos
-        mock_search_repositories.return_value = []
+        """Test that when repo is not found, it falls back to showing the repo dropdown."""
+        # Setup: _verify_repository returns None (repo not found)
+        mock_verify_repository.return_value = None
         mock_get_repositories.return_value = [
             Repository(id='789', full_name='SomeOrg/SomeRepo'),
         ]
@@ -328,74 +292,6 @@ class TestRepoSearchBehavior:
         message = call_args[0][0]
         assert isinstance(message, dict)
         assert message.get('text') == 'Choose a Repository:'
-
-        # Check it was sent as ephemeral
-        assert call_args[1]['ephemeral'] is True
-
-    @patch.object(SlackManager, 'send_message', new_callable=AsyncMock)
-    @patch.object(SlackManager, '_search_repositories', new_callable=AsyncMock)
-    async def test_search_timeout_sends_error_message(
-        self,
-        mock_search_repositories,
-        mock_send_message,
-        slack_manager,
-        slack_new_conversation_view_with_repo,
-    ):
-        """Test that when search times out, user is notified with repo name."""
-        # Setup: _search_repositories raises ProviderTimeoutError
-        mock_search_repositories.side_effect = ProviderTimeoutError(
-            'github API request timed out: ConnectTimeout'
-        )
-
-        # Execute
-        result = await slack_manager.is_job_requested(
-            MagicMock(), slack_new_conversation_view_with_repo
-        )
-
-        # Verify: should return False
-        assert result is False
-
-        # Verify: send_message was called with timeout message mentioning repo
-        mock_send_message.assert_called_once()
-        call_args = mock_send_message.call_args
-
-        # Check the message content
-        message = call_args[0][0]
-        assert 'timed out' in message.lower()
-        assert 'OpenHands/OpenHands' in message
-
-        # Check it was sent as ephemeral
-        assert call_args[1]['ephemeral'] is True
-
-    @patch.object(SlackManager, 'send_message', new_callable=AsyncMock)
-    @patch.object(SlackManager, '_search_repositories', new_callable=AsyncMock)
-    async def test_search_error_sends_error_message(
-        self,
-        mock_search_repositories,
-        mock_send_message,
-        slack_manager,
-        slack_new_conversation_view_with_repo,
-    ):
-        """Test that when search fails, user is notified with repo name."""
-        # Setup: _search_repositories raises an exception
-        mock_search_repositories.side_effect = Exception('API error')
-
-        # Execute
-        result = await slack_manager.is_job_requested(
-            MagicMock(), slack_new_conversation_view_with_repo
-        )
-
-        # Verify: should return False
-        assert result is False
-
-        # Verify: send_message was called with error message mentioning repo
-        mock_send_message.assert_called_once()
-        call_args = mock_send_message.call_args
-
-        # Check the message content
-        message = call_args[0][0]
-        assert 'failed to search' in message.lower()
-        assert 'OpenHands/OpenHands' in message
 
         # Check it was sent as ephemeral
         assert call_args[1]['ephemeral'] is True

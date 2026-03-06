@@ -86,21 +86,21 @@ class SlackManager(Manager[SlackViewInterface]):
 
         return slack_user, saas_user_auth
 
-    async def _search_repositories(
-        self, user_auth: UserAuth, query: str
-    ) -> list[Repository]:
-        """Search for repositories using the provider's search API.
+    async def _verify_repository(
+        self, user_auth: UserAuth, repo_name: str
+    ) -> Repository | None:
+        """Verify if a repository exists and user has access to it.
 
         Args:
             user_auth: User authentication object
-            query: Search query (e.g., "owner/repo" or partial repo name)
+            repo_name: Full repository name (e.g., "owner/repo")
 
         Returns:
-            List of matching repositories
+            Repository object if found, None otherwise
         """
         provider_tokens = await user_auth.get_provider_tokens()
         if provider_tokens is None:
-            return []
+            return None
         access_token = await user_auth.get_access_token()
         user_id = await user_auth.get_user_id()
         client = ProviderHandler(
@@ -108,15 +108,10 @@ class SlackManager(Manager[SlackViewInterface]):
             external_auth_token=access_token,
             external_auth_id=user_id,
         )
-        repos: list[Repository] = await client.search_repositories(
-            selected_provider=None,
-            query=query,
-            per_page=100,
-            sort='updated',
-            order='desc',
-            app_mode=server_config.app_mode,
-        )
-        return repos
+        try:
+            return await client.verify_repo_provider(repo_name)
+        except Exception:
+            return None
 
     async def _get_repositories(self, user_auth: UserAuth) -> list[Repository]:
         provider_tokens = await user_auth.get_provider_tokens()
@@ -296,9 +291,9 @@ class SlackManager(Manager[SlackViewInterface]):
 
             if len(inferred_repos) == 1:
                 inferred_repo = inferred_repos[0]
-                # User specified a repo - use search API directly instead of loading all repos
+                # User specified a repo - verify it exists directly
                 logger.info(
-                    f'[Slack] User specified repo "{inferred_repo}", searching directly',
+                    f'[Slack] User specified repo "{inferred_repo}", verifying',
                     extra={
                         'slack_user_id': user.slack_user_id,
                         'keycloak_user_id': user.keycloak_user_id,
@@ -306,85 +301,21 @@ class SlackManager(Manager[SlackViewInterface]):
                     },
                 )
 
-                try:
-                    search_results = await self._search_repositories(
-                        slack_view.saas_user_auth, inferred_repo
-                    )
-                except ProviderTimeoutError:
-                    logger.warning(
-                        'repo_search_timeout',
-                        extra={
-                            'slack_user_id': user.slack_user_id,
-                            'keycloak_user_id': user.keycloak_user_id,
-                            'inferred_repo': inferred_repo,
-                        },
-                    )
-                    timeout_msg = (
-                        f'The search for repository "{inferred_repo}" timed out. '
-                        'Please try again with a more specific repository name '
-                        '(e.g., "owner/repo-name").'
-                    )
-                    await self.send_message(timeout_msg, slack_view, ephemeral=True)
-                    return False
-                except Exception as e:
-                    logger.error(
-                        'repo_search_failed',
-                        extra={
-                            'slack_user_id': user.slack_user_id,
-                            'keycloak_user_id': user.keycloak_user_id,
-                            'inferred_repo': inferred_repo,
-                            'error': str(e),
-                        },
-                    )
-                    error_msg = (
-                        f'Failed to search for repository "{inferred_repo}". '
-                        'Please check the repository name and try again.'
-                    )
-                    await self.send_message(error_msg, slack_view, ephemeral=True)
-                    return False
+                repository = await self._verify_repository(
+                    slack_view.saas_user_auth, inferred_repo
+                )
 
-                # Filter results to match the inferred repo pattern
-                matching_repos = [
-                    repo
-                    for repo in search_results
-                    if inferred_repo.lower() in repo.full_name.lower()
-                ]
-
-                if len(matching_repos) == 1:
-                    # Exact match found - proceed with job
-                    slack_view.selected_repo = matching_repos[0].full_name
+                if repository:
+                    # Repository found - proceed with job
+                    slack_view.selected_repo = repository.full_name
                     logger.info(
-                        f'[Slack] Found exact match: {matching_repos[0].full_name}'
+                        f'[Slack] Verified repository: {repository.full_name}'
                     )
                     return True
 
-                elif len(matching_repos) > 1:
-                    # Multiple matches from search - ask user to clarify
-                    repo_names = [repo.full_name for repo in matching_repos[:10]]
-                    repo_list_str = '\n• '.join(repo_names)
-                    if len(matching_repos) > 10:
-                        repo_list_str += f'\n• ... and {len(matching_repos) - 10} more'
-
-                    clarify_msg = (
-                        f'I found multiple repositories matching "{inferred_repo}":\n'
-                        f'• {repo_list_str}\n\n'
-                        'Please specify the full repository name (e.g., "owner/repo-name") '
-                        'so I can determine which one you want to use.'
-                    )
-                    logger.info(
-                        'multiple_repos_matched',
-                        extra={
-                            'slack_user_id': user.slack_user_id,
-                            'inferred_repo': inferred_repo,
-                            'match_count': len(matching_repos),
-                        },
-                    )
-                    await self.send_message(clarify_msg, slack_view, ephemeral=True)
-                    return False
-
-                # No matches found - fall through to fetch all repos and show dropdown
+                # Repository not found - fall through to fetch all repos and show dropdown
                 logger.info(
-                    'no_repos_matched_falling_back',
+                    'repo_not_found_falling_back',
                     extra={
                         'slack_user_id': user.slack_user_id,
                         'inferred_repo': inferred_repo,
