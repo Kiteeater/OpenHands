@@ -98,9 +98,13 @@ async def process_event(
                             conversation_id=conversation_id,
                             error_type='unknown',  # V0: error classification not available from AgentState alone
                             error_message=None,
-                            llm_model=conv_meta.llm_model if conv_meta and hasattr(conv_meta, 'llm_model') else None,
+                            llm_model=conv_meta.llm_model
+                            if conv_meta and hasattr(conv_meta, 'llm_model')
+                            else None,
                             turn_count=None,
-                            terminal_state=event.agent_state.value if hasattr(event.agent_state, 'value') else str(event.agent_state),
+                            terminal_state=event.agent_state.value
+                            if hasattr(event.agent_state, 'value')
+                            else str(event.agent_state),
                             org_id=ctx.org_id,
                             consented=ctx.consented,
                         )
@@ -108,12 +112,22 @@ async def process_event(
                         analytics.track_conversation_finished(
                             distinct_id=user_id,
                             conversation_id=conversation_id,
-                            terminal_state=event.agent_state.value if hasattr(event.agent_state, 'value') else str(event.agent_state),
+                            terminal_state=event.agent_state.value
+                            if hasattr(event.agent_state, 'value')
+                            else str(event.agent_state),
                             turn_count=None,
-                            accumulated_cost_usd=conv_meta.accumulated_cost if conv_meta else None,
-                            prompt_tokens=conv_meta.prompt_tokens if conv_meta else None,
-                            completion_tokens=conv_meta.completion_tokens if conv_meta else None,
-                            llm_model=conv_meta.llm_model if conv_meta and hasattr(conv_meta, 'llm_model') else None,
+                            accumulated_cost_usd=conv_meta.accumulated_cost
+                            if conv_meta
+                            else None,
+                            prompt_tokens=conv_meta.prompt_tokens
+                            if conv_meta
+                            else None,
+                            completion_tokens=conv_meta.completion_tokens
+                            if conv_meta
+                            else None,
+                            llm_model=conv_meta.llm_model
+                            if conv_meta and hasattr(conv_meta, 'llm_model')
+                            else None,
                             trigger=None,  # V0: trigger not available in callback context
                             org_id=ctx.org_id,
                             consented=ctx.consented,
@@ -147,9 +161,7 @@ async def process_event(
                                     tos_ts = ctx.user.accepted_tos if ctx.user else None
                                     if tos_ts is not None:
                                         if tos_ts.tzinfo is None:
-                                            tos_ts = tos_ts.replace(
-                                                tzinfo=timezone.utc
-                                            )
+                                            tos_ts = tos_ts.replace(tzinfo=timezone.utc)
                                         from datetime import datetime
 
                                         time_to_activate_seconds = (
@@ -162,15 +174,15 @@ async def process_event(
                                         distinct_id=user_id,
                                         conversation_id=conversation_id,
                                         time_to_activate_seconds=time_to_activate_seconds,
-                                        llm_model=conv_meta.llm_model if conv_meta else None,
+                                        llm_model=conv_meta.llm_model
+                                        if conv_meta
+                                        else None,
                                         trigger=None,  # V0: trigger not available in callback context
                                         org_id=ctx.org_id,
                                         consented=ctx.consented,
                                     )
                             except Exception:
-                                logger.exception(
-                                    'analytics:user_activated:v0:failed'
-                                )
+                                logger.exception('analytics:user_activated:v0:failed')
             except Exception:
                 logger.exception('analytics:v0_terminal_state:failed')
 

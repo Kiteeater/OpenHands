@@ -339,7 +339,6 @@ async def on_event(
 
                                             from sqlalchemy import func
                                             from sqlalchemy import select as sa_select
-
                                             from storage.database import (
                                                 a_session_maker,
                                             )

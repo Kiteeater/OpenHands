@@ -444,7 +444,9 @@ async def keycloak_callback(
                     extra={'user_id': user_id, 'org_id': str(org.id)},
                 )
                 member_count = None
-            orgs_data.append({'id': str(org.id), 'name': org.name, 'member_count': member_count})
+            orgs_data.append(
+                {'id': str(org.id), 'name': org.name, 'member_count': member_count}
+            )
 
         analytics.identify_user(
             distinct_id=user_id,
