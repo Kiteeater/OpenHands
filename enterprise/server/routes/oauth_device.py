@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from storage.api_key_store import ApiKeyStore
 from storage.device_code_store import DeviceCodeStore
 
-from openhands.analytics import get_analytics_service
+from openhands.analytics import get_analytics_service, resolve_context
 from openhands.core.logger import openhands_logger as logger
 from openhands.server.user_auth import get_user_id
 
@@ -316,43 +316,31 @@ async def device_verification_authenticated(
         analytics = get_analytics_service()
         if analytics:
             try:
-                from storage.user_store import UserStore
+                ctx = await resolve_context(user_id)
 
-                user = await UserStore.get_user_by_id(user_id)
-                if user:
-                    consented = user.user_consents_to_analytics is True
+                # Load current org name for identify_user
+                from storage.org_store import OrgStore
 
-                    # Set person properties — same pattern as keycloak_callback
-                    from storage.org_store import OrgStore
+                current_org = (
+                    await OrgStore.get_org_by_id(ctx.user.current_org_id)
+                    if ctx.user and ctx.user.current_org_id
+                    else None
+                )
 
-                    current_org = (
-                        await OrgStore.get_org_by_id(user.current_org_id)
-                        if user.current_org_id
-                        else None
-                    )
+                analytics.identify_user(
+                    distinct_id=user_id,
+                    consented=ctx.consented,
+                    org_id=ctx.org_id,
+                    org_name=current_org.name if current_org else None,
+                    idp='device_auth',
+                )
 
-                    analytics.set_person_properties(
-                        distinct_id=user_id,
-                        properties={
-                            'org_id': str(user.current_org_id)
-                            if user.current_org_id
-                            else None,
-                            'org_name': current_org.name if current_org else None,
-                            'idp': 'device_auth',
-                        },
-                        consented=consented,
-                    )
-
-                    # Capture login event for device auth
-                    analytics.capture(
-                        distinct_id=user_id,
-                        event='user logged in',
-                        properties={'idp': 'device_auth'},
-                        org_id=str(user.current_org_id)
-                        if user.current_org_id
-                        else None,
-                        consented=consented,
-                    )
+                analytics.track_user_logged_in(
+                    distinct_id=user_id,
+                    idp='device_auth',
+                    org_id=ctx.org_id,
+                    consented=ctx.consented,
+                )
             except Exception:
                 logger.exception(
                     'oauth_device:analytics:failed',
