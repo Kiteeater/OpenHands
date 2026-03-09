@@ -8,6 +8,7 @@ from pydantic import SecretStr
 
 from openhands.integrations.provider import ProviderToken, ProviderType
 from openhands.server.app import app
+from openhands.server.routes import settings as settings_routes
 from openhands.server.user_auth.user_auth import UserAuth
 from openhands.storage.data_models.secrets import Secrets
 from openhands.storage.memory import InMemoryFileStore
@@ -79,6 +80,15 @@ def test_client():
         yield client
 
 
+def test_get_sdk_settings_schema_returns_none_when_sdk_missing():
+    with patch.object(
+        settings_routes.importlib,
+        'import_module',
+        side_effect=ModuleNotFoundError,
+    ):
+        assert settings_routes._get_sdk_settings_schema() is None
+
+
 @pytest.mark.asyncio
 async def test_settings_api_endpoints(test_client):
     """Test that the settings API endpoints work with the new auth system."""
@@ -142,7 +152,27 @@ async def test_settings_api_endpoints(test_client):
         response = test_client.get('/api/settings')
         assert response.status_code == 200
         response_data = response.json()
-        assert response_data['sdk_settings_schema']['model_name'] == 'AgentSettings'
+        schema = response_data['sdk_settings_schema']
+        assert schema['model_name'] == 'AgentSettings'
+        assert isinstance(schema['sections'], list)
+        assert [section['key'] for section in schema['sections']] == ['llm', 'critic']
+        llm_section, critic_section = schema['sections']
+        assert llm_section['label'] == 'LLM'
+        assert [field['key'] for field in llm_section['fields']] == [
+            'llm.model',
+            'llm.base_url',
+            'llm.timeout',
+            'llm.api_key',
+        ]
+        assert llm_section['fields'][-1]['secret'] is True
+        assert critic_section['label'] == 'Critic'
+        assert [field['key'] for field in critic_section['fields']] == [
+            'critic.enabled',
+            'critic.mode',
+            'critic.enable_iterative_refinement',
+            'critic.threshold',
+            'critic.max_refinement_iterations',
+        ]
         assert response_data['sdk_settings_values']['llm.model'] == 'test-model'
         assert response_data['sdk_settings_values']['llm.timeout'] == 123
         assert response_data['sdk_settings_values']['critic.enabled'] is True
@@ -152,7 +182,10 @@ async def test_settings_api_endpoints(test_client):
             is True
         )
         assert response_data['sdk_settings_values']['critic.threshold'] == 0.7
-        assert response_data['sdk_settings_values']['critic.max_refinement_iterations'] == 4
+        assert (
+            response_data['sdk_settings_values']['critic.max_refinement_iterations']
+            == 4
+        )
         assert response_data['sdk_settings_values']['llm.api_key'] is None
 
         # Test updating with partial settings

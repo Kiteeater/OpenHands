@@ -39,7 +39,14 @@ LITE_LLM_API_URL = os.environ.get(
     'LITE_LLM_API_URL', 'https://llm-proxy.app.all-hands.dev'
 )
 
+
 def _get_sdk_settings_schema() -> dict[str, Any] | None:
+    """Return the SDK settings schema when the SDK package is installed.
+
+    This lets the legacy V0 settings API expose SDK-owned settings fields while
+    remaining compatible with environments that do not have ``openhands-sdk``
+    available yet.
+    """
     try:
         settings_module = importlib.import_module('openhands.sdk.settings')
     except ModuleNotFoundError:
