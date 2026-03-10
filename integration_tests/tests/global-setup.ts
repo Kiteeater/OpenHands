@@ -114,7 +114,7 @@ async function authenticateWithGitHub(page: import("@playwright/test").Page): Pr
   console.log("Starting GitHub authentication...");
 
   // Click the GitHub login button
-  const githubButton = page.getByRole("button", { name: /connect to github/i });
+  const githubButton = page.getByRole('button', { name: 'Log in with GitHub' });
   await expect(githubButton).toBeVisible({ timeout: 10_000 });
   await githubButton.click();
 
