@@ -1,9 +1,14 @@
 import { defineConfig, devices } from "@playwright/test";
 import dotenv from "dotenv";
 import path from "path";
+import fs from "fs";
 
 // Load environment variables from .env file
 dotenv.config({ path: path.resolve(import.meta.dirname, ".env") });
+
+// Check if auth file exists (will be created by setup project)
+const authFile = path.resolve(import.meta.dirname, "./fixtures/auth.json");
+const hasAuthFile = fs.existsSync(authFile);
 
 /**
  * Environment URLs for different deployment targets
@@ -92,8 +97,8 @@ export default defineConfig({
     // Ignore SSL errors (for staging/development environments)
     ignoreHTTPSErrors: true,
 
-    // Use persisted authentication state
-    storageState: "./fixtures/auth.json",
+    // Use persisted authentication state only if it exists
+    storageState: hasAuthFile ? authFile : undefined,
 
     // Browser viewport
     viewport: { width: 1280, height: 720 },
