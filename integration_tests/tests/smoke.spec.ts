@@ -278,7 +278,8 @@ test.describe("Smoke Tests @smoke", () => {
       // Confirm deletion in modal
       const deleteModal = page.getByTestId('delete-api-key-modal');
       await expect(deleteModal).toBeVisible({ timeout: 5_000 });
-      const confirmDeleteButton = deleteModal.getByRole('button').first();
+      // This is so ugly. :(
+      const confirmDeleteButton = deleteModal.locator('xpath=..').getByRole('button').first();
       await confirmDeleteButton.click();
 
       // Wait for modal to close
