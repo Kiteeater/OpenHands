@@ -7,6 +7,7 @@ and validates it against a Pydantic schema.
 from __future__ import annotations
 
 import ast
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from croniter import croniter
 from pydantic import BaseModel, field_validator, model_validator
@@ -69,6 +70,16 @@ class CronTriggerModel(BaseModel):
         v = v.strip()
         if not croniter.is_valid(v):
             raise ValueError(f'Invalid cron expression: {v!r}')
+        return v
+
+    @field_validator('timezone')
+    @classmethod
+    def validate_timezone(cls, v: str) -> str:
+        v = v.strip()
+        try:
+            ZoneInfo(v)
+        except (ZoneInfoNotFoundError, KeyError):
+            raise ValueError(f'Invalid timezone: {v!r}')
         return v
 
 

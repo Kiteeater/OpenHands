@@ -10,8 +10,6 @@ def generate_automation_file(
     schedule: str,
     timezone: str,
     prompt: str,
-    repository: str | None = None,
-    branch: str | None = None,
 ) -> str:
     """Return a complete, valid Python file string for an automation.
 
