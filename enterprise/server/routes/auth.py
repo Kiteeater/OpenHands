@@ -149,7 +149,6 @@ async def _get_user_orgs_with_data(user_id: str, org_member_ids: list) -> list:
     return orgs
 
 
-
 @oauth_router.get('/keycloak/callback')
 async def keycloak_callback(
     request: Request,
