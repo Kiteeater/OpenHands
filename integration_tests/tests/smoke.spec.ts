@@ -100,13 +100,13 @@ test.describe("Smoke Tests @smoke", () => {
     await page.waitForURL(/checkout\.stripe\.com/, { timeout: 30_000 });
     console.log('Redirected to Stripe checkout');
 
-    // Fill in Stripe checkout form
-    // Wait for the payment form to load
-    await page.waitForLoadState('networkidle', { timeout: 30_000 });
+    // Wait for the Pay button to be visible (indicates form is ready)
+    const payButton = page.getByRole('button', { name: /pay/i });
+    await payButton.waitFor({ state: 'visible', timeout: 30_000 });
+    console.log('Stripe checkout form loaded');
 
     // Fill in card number
     const cardNumberInput = page.locator('#cardNumber');
-    await cardNumberInput.waitFor({ state: 'visible', timeout: 15_000 });
     await cardNumberInput.fill('5105105105105100');
 
     // Fill in expiry date
@@ -129,7 +129,6 @@ test.describe("Smoke Tests @smoke", () => {
     await page.screenshot({ path: 'test-results/screenshots/stripe-checkout-filled.png' });
 
     // Click Pay button
-    const payButton = page.getByRole('button', { name: /pay/i });
     await payButton.click();
 
     // Wait for redirect back to billing page
