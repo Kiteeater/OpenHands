@@ -25,8 +25,9 @@ def generate_automation_file(
     r_timezone = repr(timezone)
     r_prompt = repr(prompt)
 
-    # Build a safe docstring — strip quotes from repr and re-escape for docstring
-    safe_docstring_name = name.replace('\\', '\\\\').replace('"', '\\"')
+    # Build a safe docstring — replace double quotes with single quotes to
+    # prevent triple-quote breakage in the docstring.
+    safe_docstring_name = name.replace('"', "'")
 
     return textwrap.dedent(f'''\
         """{safe_docstring_name} — auto-generated automation."""

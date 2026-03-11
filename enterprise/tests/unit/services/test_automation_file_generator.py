@@ -75,6 +75,19 @@ class TestGenerateAutomationFile:
         cfg = extract_config(source)
         assert cfg['name'] == 'Special Chars'
 
+    def test_triple_quotes_in_name(self):
+        """Names containing triple quotes must not break the generated file."""
+        source = generate_automation_file(
+            name='Test """Demo""" Name',
+            schedule='0 0 * * *',
+            timezone='UTC',
+            prompt='hello',
+        )
+        # Must still be valid Python
+        ast.parse(source)
+        cfg = extract_config(source)
+        assert 'Demo' in cfg['name']  # name preserved in config
+
     def test_triple_quotes_in_prompt(self):
         """Prompts containing triple quotes must not break the generated file."""
         source = generate_automation_file(
