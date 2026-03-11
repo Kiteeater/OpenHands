@@ -61,15 +61,17 @@ export class ConversationPage extends BasePage {
   /**
    * Wait for conversation interface to be ready for input
    */
-  async waitForConversationReady(timeout: number = 90_000): Promise<void> {
+  async waitForConversationReady(timeout: number = 30_000): Promise<void> {
     // Wait for the chat interface to appear
-    await expect(this.chatBox).toBeVisible({ timeout: 30_000 });
+    await expect(this.chatBox).toBeVisible({ timeout });
 
-    // Wait for the chat input to be enabled
+    // Wait for the chat input to be visible
     await expect(this.chatInput).toBeVisible({ timeout });
 
-    // Wait for loading/initialization to complete
-    await this.waitForAgentReady(timeout);
+    // Wait for agent to be ready by checking for "Waiting for task" text
+    // Note: Using text search since data-testid is not yet deployed to staging
+    const waitingForTaskText = this.page.getByText("Waiting for task");
+    await expect(waitingForTaskText).toBeVisible({ timeout });
   }
 
   /**
