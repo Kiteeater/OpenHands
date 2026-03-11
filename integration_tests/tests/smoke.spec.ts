@@ -284,10 +284,14 @@ test.describe("Smoke Tests @smoke", () => {
       // Wait for modal to close
       await expect(deleteModal).not.toBeVisible({ timeout: 5_000 });
       console.log(`Deleted existing "${API_KEY_NAME}"`);
+
+      // Wait for the page to settle after deletion
+      await page.waitForTimeout(1000);
     }
 
     // Click "Create API Key" button
     const createApiKeyButton = page.getByRole('button', { name: /create api key/i });
+    await expect(createApiKeyButton).toBeVisible({ timeout: 10_000 });
     await createApiKeyButton.click();
 
     // Wait for create modal to appear
