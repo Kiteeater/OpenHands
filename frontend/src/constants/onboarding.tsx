@@ -3,6 +3,7 @@ import { I18nKey } from "#/i18n/declaration";
 type QuestionType = "input" | "single" | "multi";
 
 export interface OnboardingForm {
+  id: string;
   app_mode: ("oss" | "saas")[];
   type: QuestionType;
   questionKey: I18nKey;
@@ -13,6 +14,7 @@ export interface OnboardingForm {
 
 export const ONBOARDING_FORM: OnboardingForm[] = [
   {
+    id: "org_name",
     type: "input",
     app_mode: ["oss"],
     questionKey: I18nKey.ONBOARDING$ORG_NAME_QUESTION,
@@ -22,6 +24,7 @@ export const ONBOARDING_FORM: OnboardingForm[] = [
     ],
   },
   {
+    id: "org_size",
     type: "single",
     app_mode: ["oss", "saas"],
     questionKey: I18nKey.ONBOARDING$ORG_SIZE_QUESTION,
@@ -35,6 +38,7 @@ export const ONBOARDING_FORM: OnboardingForm[] = [
     ],
   },
   {
+    id: "use_case",
     type: "multi",
     app_mode: ["oss", "saas"],
     questionKey: I18nKey.ONBOARDING$USE_CASE_QUESTION,
@@ -55,6 +59,7 @@ export const ONBOARDING_FORM: OnboardingForm[] = [
     ],
   },
   {
+    id: "role",
     type: "single",
     app_mode: ["saas"],
     questionKey: I18nKey.ONBOARDING$ROLE_QUESTION,

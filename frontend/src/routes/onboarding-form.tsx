@@ -50,13 +50,13 @@ function OnboardingForm() {
   const currentStep = steps[currentStepIndex];
   const isLastStep = currentStepIndex === steps.length - 1;
   const isFirstStep = currentStepIndex === 0;
-  const stepId = `step${currentStepIndex + 1}`;
 
   const currentSelections = React.useMemo(() => {
-    const selection = selections[stepId];
+    if (!currentStep) return [];
+    const selection = selections[currentStep.id];
     if (!selection) return [];
     return Array.isArray(selection) ? selection : [selection];
-  }, [selections, stepId]);
+  }, [selections, currentStep]);
 
   const isStepComplete = React.useMemo(() => {
     if (!currentStep) return false;
@@ -74,24 +74,24 @@ function OnboardingForm() {
 
     if (currentStep.type === "multi") {
       setSelections((prev) => {
-        const current = prev[stepId];
+        const current = prev[currentStep.id];
         const currentArray = Array.isArray(current) ? current : [];
 
         if (currentArray.includes(optionId)) {
           return {
             ...prev,
-            [stepId]: currentArray.filter((id) => id !== optionId),
+            [currentStep.id]: currentArray.filter((id) => id !== optionId),
           };
         }
         return {
           ...prev,
-          [stepId]: [...currentArray, optionId],
+          [currentStep.id]: [...currentArray, optionId],
         };
       });
     } else {
       setSelections((prev) => ({
         ...prev,
-        [stepId]: optionId,
+        [currentStep.id]: optionId,
       }));
     }
   };
@@ -109,9 +109,9 @@ function OnboardingForm() {
       submitOnboarding({ selections: allSelections });
       try {
         trackOnboardingCompleted({
-          role: selections.step1 || inputValues.org_name,
-          orgSize: selections.step2,
-          useCase: selections.step3,
+          role: selections.role,
+          orgSize: selections.org_size,
+          useCase: selections.use_case,
         });
       } catch (error) {
         console.error("Failed to track onboarding:", error);
