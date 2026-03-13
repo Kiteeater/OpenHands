@@ -12,7 +12,7 @@ import { ENABLE_ONBOARDING } from "#/utils/feature-flags";
 import { cn } from "#/utils/utils";
 import { ModalBackdrop } from "#/components/shared/modals/modal-backdrop";
 import { useConfig } from "#/hooks/query/use-config";
-import { ONBOARDING_FORM } from "#/constants/onboarding";
+import { ONBOARDING_FORM, OnboardingQuestion } from "#/constants/onboarding";
 
 export const clientLoader = async () => {
   if (!ENABLE_ONBOARDING()) {
@@ -21,6 +21,36 @@ export const clientLoader = async () => {
 
   return null;
 };
+
+type OnboardingAnswers = Record<string, string | string[]>;
+
+function getAnswerAsArray(answers: OnboardingAnswers, key: string): string[] {
+  const value = answers[key];
+  if (!value) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
+function getTranslatedOptions(
+  step: OnboardingQuestion,
+  t: (key: I18nKey) => string,
+) {
+  if (step.type === "input") return undefined;
+  return step.answerOptions.map((option) => ({
+    id: option.id,
+    label: t(option.key),
+  }));
+}
+
+function getTranslatedInputFields(
+  step: OnboardingQuestion,
+  t: (key: I18nKey) => string,
+) {
+  if (step.type !== "input") return undefined;
+  return step.inputOptions.map((field) => ({
+    id: field.id,
+    label: t(field.key),
+  }));
+}
 
 function OnboardingForm() {
   const { t } = useTranslation();
@@ -42,34 +72,38 @@ function OnboardingForm() {
   );
 
   const [currentStepIndex, setCurrentStepIndex] = React.useState(0);
-  const [selections, setSelections] = React.useState<
-    Record<string, string | string[]>
-  >({});
-  const [inputValues, setInputValues] = React.useState<Record<string, string>>(
-    {},
-  );
+  const [answers, setAnswers] = React.useState<OnboardingAnswers>({});
 
   const currentStep = steps[currentStepIndex];
   const isLastStep = currentStepIndex === steps.length - 1;
   const isFirstStep = currentStepIndex === 0;
 
-  const currentSelections = React.useMemo(() => {
-    if (!currentStep) return [];
-    const selection = selections[currentStep.id];
-    if (!selection) return [];
-    return Array.isArray(selection) ? selection : [selection];
-  }, [selections, currentStep]);
+  const currentSelections = React.useMemo(
+    () => (currentStep ? getAnswerAsArray(answers, currentStep.id) : []),
+    [answers, currentStep],
+  );
 
   const isStepComplete = React.useMemo(() => {
     if (!currentStep) return false;
 
     if (currentStep.type === "input") {
-      return currentStep.inputOptions!.every((field) =>
-        inputValues[field.id]?.trim(),
-      );
+      return currentStep.inputOptions.every((field) => {
+        const value = answers[field.id];
+        return typeof value === "string" && value.trim() !== "";
+      });
     }
     return currentSelections.length > 0;
-  }, [currentStep, inputValues, currentSelections]);
+  }, [currentStep, answers, currentSelections]);
+
+  const inputValues = React.useMemo(() => {
+    const result: Record<string, string> = {};
+    for (const [key, value] of Object.entries(answers)) {
+      if (typeof value === "string") {
+        result[key] = value;
+      }
+    }
+    return result;
+  }, [answers]);
 
   // Wait for config to load before rendering to show correct questions
   if (!config.data) {
@@ -80,9 +114,8 @@ function OnboardingForm() {
     if (!currentStep) return;
 
     if (currentStep.type === "multi") {
-      setSelections((prev) => {
-        const current = prev[currentStep.id];
-        const currentArray = Array.isArray(current) ? current : [];
+      setAnswers((prev) => {
+        const currentArray = getAnswerAsArray(prev, currentStep.id);
 
         if (currentArray.includes(optionId)) {
           return {
@@ -96,7 +129,7 @@ function OnboardingForm() {
         };
       });
     } else {
-      setSelections((prev) => ({
+      setAnswers((prev) => ({
         ...prev,
         [currentStep.id]: optionId,
       }));
@@ -104,7 +137,7 @@ function OnboardingForm() {
   };
 
   const handleInputChange = (fieldId: string, value: string) => {
-    setInputValues((prev) => ({
+    setAnswers((prev) => ({
       ...prev,
       [fieldId]: value,
     }));
@@ -112,20 +145,15 @@ function OnboardingForm() {
 
   const handleNext = () => {
     if (isLastStep) {
-      const allSelections = { ...selections, ...inputValues };
-      submitOnboarding({ selections: allSelections });
+      submitOnboarding({ selections: answers });
 
       // Only track onboarding for SaaS users
       if (appMode === "saas") {
-        try {
-          trackOnboardingCompleted({
-            role: selections.role as string | undefined,
-            orgSize: selections.org_size as string | undefined,
-            useCase: selections.use_case as string[] | undefined,
-          });
-        } catch (error) {
-          console.error("Failed to track onboarding:", error);
-        }
+        trackOnboardingCompleted({
+          role: answers.role as string | undefined,
+          orgSize: answers.org_size as string | undefined,
+          useCase: answers.use_case as string[] | undefined,
+        });
       }
     } else {
       setCurrentStepIndex((prev) => prev + 1);
@@ -144,15 +172,8 @@ function OnboardingForm() {
     return null;
   }
 
-  const translatedOptions = currentStep.answerOptions?.map((option) => ({
-    id: option.id,
-    label: t(option.key),
-  }));
-
-  const translatedInputFields = currentStep.inputOptions?.map((field) => ({
-    id: field.id,
-    label: t(field.key),
-  }));
+  const translatedOptions = getTranslatedOptions(currentStep, t);
+  const translatedInputFields = getTranslatedInputFields(currentStep, t);
 
   return (
     <ModalBackdrop>

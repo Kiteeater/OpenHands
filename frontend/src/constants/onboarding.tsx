@@ -1,18 +1,33 @@
 import { I18nKey } from "#/i18n/declaration";
 
-type QuestionType = "input" | "single" | "multi";
-
-export interface OnboardingForm {
+interface BaseOnboardingQuestion {
   id: string;
   app_mode: ("oss" | "saas")[];
-  type: QuestionType;
   questionKey: I18nKey;
   subtitleKey?: I18nKey;
-  answerOptions?: { key: I18nKey; id: string }[];
-  inputOptions?: { key: I18nKey; id: string }[];
 }
 
-export const ONBOARDING_FORM: OnboardingForm[] = [
+interface InputQuestion extends BaseOnboardingQuestion {
+  type: "input";
+  inputOptions: { key: I18nKey; id: string }[];
+}
+
+interface SingleSelectQuestion extends BaseOnboardingQuestion {
+  type: "single";
+  answerOptions: { key: I18nKey; id: string }[];
+}
+
+interface MultiSelectQuestion extends BaseOnboardingQuestion {
+  type: "multi";
+  answerOptions: { key: I18nKey; id: string }[];
+}
+
+export type OnboardingQuestion =
+  | InputQuestion
+  | SingleSelectQuestion
+  | MultiSelectQuestion;
+
+export const ONBOARDING_FORM: OnboardingQuestion[] = [
   {
     id: "org_name",
     type: "input",
