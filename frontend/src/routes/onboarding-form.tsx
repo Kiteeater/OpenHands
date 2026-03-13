@@ -150,9 +150,12 @@ function OnboardingForm() {
       // Only track onboarding for SaaS users
       if (appMode === "saas") {
         trackOnboardingCompleted({
-          role: answers.role as string | undefined,
-          orgSize: answers.org_size as string | undefined,
-          useCase: answers.use_case as string[] | undefined,
+          role: typeof answers.role === "string" ? answers.role : undefined,
+          orgSize:
+            typeof answers.org_size === "string" ? answers.org_size : undefined,
+          useCase: Array.isArray(answers.use_case)
+            ? answers.use_case
+            : undefined,
         });
       }
     } else {
