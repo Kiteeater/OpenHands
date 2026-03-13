@@ -251,9 +251,9 @@ e2b-code-interpreter = { version = "^2.0.0", optional = true }
 pybase62 = "^1.0.0"
 
 # V1 dependencies
-openhands-sdk = "1.13"
-openhands-agent-server = "1.13"
-openhands-tools = "1.13"
+openhands-sdk = "1.13.1"
+openhands-agent-server = "1.13.1"
+openhands-tools = "1.13.1"
 jwcrypto = ">=1.5.6"
 sqlalchemy = { extras = [ "asyncio" ], version = "^2.0.40" }
 pg8000 = "^1.31.5"
