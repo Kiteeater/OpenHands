@@ -1110,6 +1110,7 @@ class LiveStatusAppConversationService(AppConversationServiceBase):
         system_message_suffix: str | None,
         mcp_config: dict,
         condenser_max_size: int | None,
+        condenser_max_tokens: int | None = None,
         secrets: dict[str, SecretValue] | None = None,
         git_provider: ProviderType | None = None,
         working_dir: str | None = None,
@@ -1121,7 +1122,8 @@ class LiveStatusAppConversationService(AppConversationServiceBase):
             agent_type: Type of agent to create (PLAN or DEFAULT)
             system_message_suffix: Optional suffix for system messages
             mcp_config: MCP configuration dictionary
-            condenser_max_size: condenser_max_size setting
+            condenser_max_size: condenser_max_size setting (event-based trigger)
+            condenser_max_tokens: condenser_max_tokens setting (token-based trigger)
             secrets: Optional dictionary of secrets for authentication
             git_provider: Optional git provider type for computing plan path
             working_dir: Optional working directory for computing plan path
@@ -1130,7 +1132,9 @@ class LiveStatusAppConversationService(AppConversationServiceBase):
             Configured Agent instance with context
         """
         # Create condenser with user's settings
-        condenser = self._create_condenser(llm, agent_type, condenser_max_size)
+        condenser = self._create_condenser(
+            llm, agent_type, condenser_max_size, condenser_max_tokens
+        )
 
         # Create agent based on type
         if agent_type == AgentType.PLAN:
@@ -1491,6 +1495,7 @@ class LiveStatusAppConversationService(AppConversationServiceBase):
             system_message_suffix,
             mcp_config,
             user.condenser_max_size,
+            condenser_max_tokens=user.condenser_max_tokens,
             secrets=secrets,
             git_provider=git_provider,
             working_dir=project_dir,

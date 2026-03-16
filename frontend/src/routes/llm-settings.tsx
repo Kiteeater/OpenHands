@@ -92,6 +92,7 @@ function LlmSettingsScreen() {
     enableDefaultCondenser: false,
     securityAnalyzer: false,
     condenserMaxSize: false,
+    condenserMaxTokens: false,
   });
 
   // Track the currently selected model to show help text
@@ -211,6 +212,7 @@ function LlmSettingsScreen() {
       enableDefaultCondenser: false,
       securityAnalyzer: false,
       condenserMaxSize: false,
+      condenserMaxTokens: false,
     });
   };
 
@@ -282,6 +284,17 @@ function LlmSettingsScreen() {
         ? Math.max(20, condenserMaxSizeRaw)
         : undefined;
 
+    const condenserMaxTokensStr = formData
+      .get("condenser-max-tokens-input")
+      ?.toString();
+    const condenserMaxTokensRaw = condenserMaxTokensStr
+      ? Number.parseInt(condenserMaxTokensStr, 10)
+      : undefined;
+    const condenserMaxTokens =
+      condenserMaxTokensRaw !== undefined && condenserMaxTokensRaw > 0
+        ? condenserMaxTokensRaw
+        : null;
+
     const securityAnalyzer = formData
       .get("security-analyzer-input")
       ?.toString();
@@ -300,6 +313,7 @@ function LlmSettingsScreen() {
         enable_default_condenser: enableDefaultCondenser,
         condenser_max_size:
           condenserMaxSize ?? DEFAULT_SETTINGS.condenser_max_size,
+        condenser_max_tokens: condenserMaxTokens,
         security_analyzer:
           securityAnalyzer === "none"
             ? null
@@ -324,6 +338,7 @@ function LlmSettingsScreen() {
       enableDefaultCondenser: false,
       securityAnalyzer: false,
       condenserMaxSize: false,
+      condenserMaxTokens: false,
     });
   };
 
@@ -431,6 +446,19 @@ function LlmSettingsScreen() {
     setDirtyInputs((prev) => ({
       ...prev,
       condenserMaxSize: condenserMaxSizeIsDirty,
+    }));
+  };
+
+  const handleCondenserMaxTokensIsDirty = (value: string) => {
+    const parsed = value ? Number.parseInt(value, 10) : undefined;
+    const condenserMaxTokens =
+      parsed !== undefined && parsed > 0 ? parsed : null;
+    const condenserMaxTokensIsDirty =
+      condenserMaxTokens !==
+      (settings?.condenser_max_tokens ?? DEFAULT_SETTINGS.condenser_max_tokens);
+    setDirtyInputs((prev) => ({
+      ...prev,
+      condenserMaxTokens: condenserMaxTokensIsDirty,
     }));
   };
 
@@ -688,6 +716,27 @@ function LlmSettingsScreen() {
                 />
                 <p className="text-xs text-tertiary-alt mt-6">
                   {t(I18nKey.SETTINGS$CONDENSER_MAX_SIZE_TOOLTIP)}
+                </p>
+              </div>
+
+              <div className="w-full max-w-[680px]">
+                <SettingsInput
+                  testId="condenser-max-tokens-input"
+                  name="condenser-max-tokens-input"
+                  type="number"
+                  min={1}
+                  step={1}
+                  label={t(I18nKey.SETTINGS$CONDENSER_MAX_TOKENS)}
+                  defaultValue={settings.condenser_max_tokens?.toString() ?? ""}
+                  placeholder={t(
+                    I18nKey.SETTINGS$CONDENSER_MAX_TOKENS_PLACEHOLDER,
+                  )}
+                  onChange={(value) => handleCondenserMaxTokensIsDirty(value)}
+                  isDisabled={isReadOnly || !settings.enable_default_condenser}
+                  className="w-full max-w-[680px] capitalize"
+                />
+                <p className="text-xs text-tertiary-alt mt-6">
+                  {t(I18nKey.SETTINGS$CONDENSER_MAX_TOKENS_TOOLTIP)}
                 </p>
               </div>
 
