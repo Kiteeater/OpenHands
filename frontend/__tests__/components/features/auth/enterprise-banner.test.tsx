@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import { EnterpriseBanner } from "#/components/features/auth/enterprise-banner";
 
@@ -12,14 +12,7 @@ vi.mock("posthog-js/react", () => ({
 }));
 
 describe("EnterpriseBanner", () => {
-  const mockWindowOpen = vi.fn();
-
-  beforeEach(() => {
-    vi.stubGlobal("open", mockWindowOpen);
-  });
-
   afterEach(() => {
-    vi.unstubAllGlobals();
     vi.clearAllMocks();
   });
 
@@ -46,30 +39,31 @@ describe("EnterpriseBanner", () => {
     expect(screen.getByText("ENTERPRISE$FEATURE_SUPPORT")).toBeInTheDocument();
   });
 
-  it("should render learn more button", () => {
+  it("should render learn more link with correct href and target", () => {
     render(<EnterpriseBanner />);
 
-    const learnMoreButton = screen.getByRole("button", {
+    const learnMoreLink = screen.getByRole("link", {
       name: "ENTERPRISE$LEARN_MORE",
     });
-    expect(learnMoreButton).toBeInTheDocument();
+    expect(learnMoreLink).toBeInTheDocument();
+    expect(learnMoreLink).toHaveAttribute(
+      "href",
+      "https://openhands.dev/enterprise",
+    );
+    expect(learnMoreLink).toHaveAttribute("target", "_blank");
+    expect(learnMoreLink).toHaveAttribute("rel", "noopener noreferrer");
   });
 
-  it("should track posthog event and open enterprise URL when learn more button is clicked", async () => {
+  it("should track posthog event when learn more link is clicked", async () => {
     const user = userEvent.setup();
     render(<EnterpriseBanner />);
 
-    const learnMoreButton = screen.getByRole("button", {
+    const learnMoreLink = screen.getByRole("link", {
       name: "ENTERPRISE$LEARN_MORE",
     });
-    await user.click(learnMoreButton);
+    await user.click(learnMoreLink);
 
     expect(mockCapture).toHaveBeenCalledWith("saas_selfhosted_inquiry");
-    expect(mockWindowOpen).toHaveBeenCalledWith(
-      "https://openhands.dev/enterprise",
-      "_blank",
-      "noopener,noreferrer",
-    );
   });
 
   it("should have correct styling from Figma design", () => {
@@ -91,5 +85,14 @@ describe("EnterpriseBanner", () => {
     const icon = banner.querySelector("svg");
     expect(icon).toBeInTheDocument();
     expect(icon).toHaveClass("w-8", "h-8");
+  });
+
+  it("should have cursor-pointer class on learn more link", () => {
+    render(<EnterpriseBanner />);
+
+    const learnMoreLink = screen.getByRole("link", {
+      name: "ENTERPRISE$LEARN_MORE",
+    });
+    expect(learnMoreLink).toHaveClass("hover:cursor-pointer");
   });
 });
