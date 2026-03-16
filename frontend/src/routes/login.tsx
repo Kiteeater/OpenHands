@@ -77,7 +77,7 @@ export default function LoginPage() {
         className="min-h-screen flex items-center justify-center bg-base p-4"
         data-testid="login-page"
       >
-        <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-16 w-full max-w-[301.5px] lg:max-w-none lg:w-auto">
+        <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-16">
           <LoginContent
             githubAuthUrl={gitHubAuthUrl}
             appMode={config.data?.app_mode}
@@ -90,7 +90,7 @@ export default function LoginPage() {
             buildOAuthStateData={buildOAuthStateData}
           />
           {showEnterpriseBanner && (
-            <div className="w-full lg:w-[301.5px]">
+            <div className="w-[301.5px] shrink-0">
               <EnterpriseBanner />
             </div>
           )}
