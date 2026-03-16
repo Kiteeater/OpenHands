@@ -19,6 +19,11 @@ import { retrieveAxiosErrorMessage } from "#/utils/retrieve-axios-error-message"
 import { AppSettingsInputsSkeleton } from "#/components/features/settings/app-settings/app-settings-inputs-skeleton";
 import { useConfig } from "#/hooks/query/use-config";
 import { parseMaxBudgetPerTask } from "#/utils/settings-utils";
+import { createPermissionGuard } from "#/utils/org/permission-guard";
+
+export const clientLoader = createPermissionGuard(
+  "manage_application_settings",
+);
 
 function AppSettingsScreen() {
   const posthog = usePostHog();
@@ -215,7 +220,7 @@ function AppSettingsScreen() {
             {t(I18nKey.SETTINGS$SOUND_NOTIFICATIONS)}
           </SettingsSwitch>
 
-          {config?.APP_MODE === "saas" && (
+          {config?.app_mode === "saas" && (
             <SettingsSwitch
               testId="enable-proactive-conversations-switch"
               name="enable-proactive-conversations-switch"
@@ -228,7 +233,7 @@ function AppSettingsScreen() {
             </SettingsSwitch>
           )}
 
-          {config?.APP_MODE === "saas" && (
+          {config?.app_mode === "saas" && (
             <SettingsSwitch
               testId="enable-solvability-analysis-switch"
               name="enable-solvability-analysis-switch"

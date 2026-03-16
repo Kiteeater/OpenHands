@@ -48,7 +48,15 @@ from openhands.app_server.services.httpx_client_injector import HttpxClientInjec
 from openhands.app_server.services.injector import InjectorState
 from openhands.app_server.services.jwt_service import JwtService, JwtServiceInjector
 from openhands.app_server.user.user_context import UserContext, UserContextInjector
+from openhands.app_server.web_client.default_web_client_config_injector import (
+    DefaultWebClientConfigInjector,
+)
+from openhands.app_server.web_client.web_client_config_injector import (
+    WebClientConfigInjector,
+)
 from openhands.sdk.utils.models import OpenHandsModel
+from openhands.server.types import AppMode
+from openhands.utils.environment import StorageProvider, get_storage_provider
 
 
 def get_default_persistence_dir() -> Path:
@@ -114,9 +122,12 @@ class AppServerConfig(OpenHandsModel):
             persistence_dir=get_default_persistence_dir()
         )
     )
-
     # Services
     lifespan: AppLifespanService | None = Field(default_factory=_get_default_lifespan)
+    app_mode: AppMode = AppMode.OPENHANDS
+    web_client: WebClientConfigInjector = Field(
+        default_factory=DefaultWebClientConfigInjector
+    )
 
 
 def config_from_env() -> AppServerConfig:
@@ -129,6 +140,9 @@ def config_from_env() -> AppServerConfig:
     )
     from openhands.app_server.app_conversation.sql_app_conversation_start_task_service import (  # noqa: E501
         SQLAppConversationStartTaskServiceInjector,
+    )
+    from openhands.app_server.event.aws_event_service import (
+        AwsEventServiceInjector,
     )
     from openhands.app_server.event.filesystem_event_service import (
         FilesystemEventServiceInjector,
@@ -164,8 +178,18 @@ def config_from_env() -> AppServerConfig:
     config: AppServerConfig = from_env(AppServerConfig, 'OH')  # type: ignore
 
     if config.event is None:
-        if os.environ.get('FILE_STORE') == 'google_cloud':
-            # Legacy V0 google cloud storage configuration
+        provider = get_storage_provider()
+
+        if provider == StorageProvider.AWS:
+            # AWS S3 storage configuration
+            bucket_name = os.environ.get('FILE_STORE_PATH')
+            if not bucket_name:
+                raise ValueError(
+                    'FILE_STORE_PATH environment variable is required for S3 storage'
+                )
+            config.event = AwsEventServiceInjector(bucket_name=bucket_name)
+        elif provider == StorageProvider.GCP:
+            # Google Cloud storage configuration
             config.event = GoogleCloudEventServiceInjector(
                 bucket_name=os.environ.get('FILE_STORE_PATH')
             )
@@ -195,6 +219,13 @@ def config_from_env() -> AppServerConfig:
                 docker_sandbox_kwargs['container_url_pattern'] = os.environ[
                     'SANDBOX_CONTAINER_URL_PATTERN'
                 ]
+            # Allow configuring sandbox startup grace period
+            # This is useful for slower machines or cloud environments where
+            # the agent-server container takes longer to initialize
+            if os.getenv('SANDBOX_STARTUP_GRACE_SECONDS'):
+                docker_sandbox_kwargs['startup_grace_seconds'] = int(
+                    os.environ['SANDBOX_STARTUP_GRACE_SECONDS']
+                )
             # Parse SANDBOX_VOLUMES and convert to VolumeMount objects
             # This is set by the CLI's --mount-cwd flag
             sandbox_volumes = os.getenv('SANDBOX_VOLUMES')
