@@ -72,14 +72,15 @@ describe("EnterpriseBanner", () => {
     );
   });
 
-  it("should have gradient background style", () => {
+  it("should have correct styling from Figma design", () => {
     render(<EnterpriseBanner />);
 
     const banner = screen.getByTestId("enterprise-banner");
     expect(banner).toHaveClass("w-full");
-    // Check that the banner has a gradient background
+    // Check that the banner has the correct Figma styles
     const style = banner.getAttribute("style");
-    expect(style).toContain("linear-gradient");
+    expect(style).toContain("background");
+    expect(style).toContain("box-shadow");
   });
 
   it("should render server icon", () => {

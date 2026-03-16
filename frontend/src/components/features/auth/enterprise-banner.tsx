@@ -23,10 +23,11 @@ export function EnterpriseBanner() {
 
   return (
     <div
-      className="flex flex-col gap-4 p-6 rounded-xl border border-neutral-600 w-full"
+      className="flex flex-col gap-4 p-6 rounded-xl w-full"
       style={{
-        background:
-          "linear-gradient(135deg, rgba(88, 28, 135, 0.15) 0%, rgba(30, 30, 30, 0.8) 50%, #1e1e1e 100%)",
+        background: "#0A0A0A80",
+        borderTop: "1px solid #24242499",
+        boxShadow: "0px 4px 6px -4px #0000001A, 0px 10px 15px -3px #0000001A",
       }}
       data-testid="enterprise-banner"
     >
