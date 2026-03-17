@@ -841,136 +841,108 @@ class TestLiveStatusAppConversationService:
         # Assert
         assert path == '/workspace/project/agents-tmp-config/PLAN.md'
 
-    @patch(
-        'openhands.app_server.app_conversation.live_status_app_conversation_service.get_planning_tools'
-    )
-    @patch(
-        'openhands.app_server.app_conversation.app_conversation_service_base.AppConversationServiceBase._create_condenser'
-    )
-    @patch(
-        'openhands.app_server.app_conversation.live_status_app_conversation_service.format_plan_structure'
-    )
-    def test_create_agent_with_context_planning_agent(
-        self, mock_format_plan, mock_create_condenser, mock_get_tools
-    ):
-        """Test _create_agent_with_context for planning agent type."""
-        # Arrange
-        mock_llm = Mock(spec=LLM)
-        mock_llm.model_copy.return_value = mock_llm
-        mock_get_tools.return_value = []
-        mock_condenser = Mock()
-        mock_create_condenser.return_value = mock_condenser
-        mock_format_plan.return_value = 'test_plan_structure'
-        mcp_config = {'default': {'url': 'test'}}
-        system_message_suffix = 'Test suffix'
-        working_dir = '/workspace/project'
-        git_provider = ProviderType.GITHUB
+    def test_get_agent_settings_resolves_critic_proxy(self):
+        """_get_agent_settings sets critic endpoint for openhands/ models."""
+        self.mock_user.sdk_settings_values = {
+            'llm.model': 'openhands/default',
+            'verification.critic_enabled': True,
+        }
+        self.service.openhands_provider_base_url = (
+            'https://llm-proxy.app.all-hands.dev'
+        )
 
-        # Act
-        with patch(
-            'openhands.app_server.app_conversation.live_status_app_conversation_service.Agent'
-        ) as mock_agent_class:
-            mock_agent_instance = Mock()
-            mock_agent_instance.model_copy.return_value = mock_agent_instance
-            mock_agent_class.return_value = mock_agent_instance
+        settings = self.service._get_agent_settings(self.mock_user, None)
 
-            self.service._create_agent_with_context(
-                mock_llm,
-                AgentType.PLAN,
-                system_message_suffix,
-                mcp_config,
-                self.mock_user.condenser_max_size,
-                git_provider=git_provider,
-                working_dir=working_dir,
-            )
+        assert settings.verification.critic_enabled is True
+        assert (
+            settings.verification.critic_server_url
+            == 'https://llm-proxy.app.all-hands.dev/vllm'
+        )
+        assert settings.verification.critic_model_name == 'critic'
 
-            # Assert — Agent() receives llm, tools, condenser, agent_context
-            mock_get_tools.assert_called_once_with(
-                plan_path='/workspace/project/.agents_tmp/PLAN.md'
-            )
-            mock_agent_class.assert_called_once()
-            call_kwargs = mock_agent_class.call_args[1]
-            assert call_kwargs['llm'] == mock_llm
-            assert call_kwargs['condenser'] == mock_condenser
-            assert call_kwargs['agent_context'].system_message_suffix.startswith(
-                PLANNING_AGENT_INSTRUCTION
-            )
-            mock_create_condenser.assert_called_once_with(
-                mock_llm, AgentType.PLAN, self.mock_user.condenser_max_size
-            )
+    def test_get_agent_settings_no_critic_proxy_for_external_models(self):
+        """_get_agent_settings leaves critic settings alone for non-proxy models."""
+        self.mock_user.sdk_settings_values = {
+            'llm.model': 'anthropic/claude-3',
+            'verification.critic_enabled': True,
+        }
 
-            # Runtime overrides applied via model_copy
-            copy_kwargs = mock_agent_instance.model_copy.call_args[1]['update']
-            assert copy_kwargs['mcp_config'] == mcp_config
-            assert copy_kwargs['system_prompt_filename'] == 'system_prompt_planning.j2'
-            assert (
-                copy_kwargs['system_prompt_kwargs']['plan_structure']
-                == 'test_plan_structure'
-            )
-            assert copy_kwargs['security_analyzer'] is None
+        settings = self.service._get_agent_settings(self.mock_user, None)
+
+        # critic_enabled honored, but no proxy routing applied
+        assert settings.verification.critic_enabled is True
+        assert settings.verification.critic_server_url is None
 
     @patch(
-        'openhands.app_server.app_conversation.live_status_app_conversation_service.get_default_tools'
+        'openhands.app_server.app_conversation.live_status_app_conversation_service.get_planning_tools',
+        return_value=[],
     )
-    @patch(
-        'openhands.app_server.app_conversation.app_conversation_service_base.AppConversationServiceBase._create_condenser'
-    )
-    def test_create_agent_with_context_default_agent(
-        self, mock_create_condenser, mock_get_tools
-    ):
-        """Test _create_agent_with_context for default agent type."""
-        # Arrange
-        mock_llm = Mock(spec=LLM)
-        mock_llm.model_copy.return_value = mock_llm
-        mock_get_tools.return_value = []
-        mock_condenser = Mock()
-        mock_create_condenser.return_value = mock_condenser
+    def test_create_agent_planning_agent(self, _mock_get_tools):
+        """Planning agent gets planning tools, prompt overrides, and instruction."""
+        llm = LLM(model='test-model', api_key=SecretStr('k'))
+        settings = AgentSettings(llm=LLM(model='test-model'))
         mcp_config = {'default': {'url': 'test'}}
 
-        # Act
-        with patch(
-            'openhands.app_server.app_conversation.live_status_app_conversation_service.Agent'
-        ) as mock_agent_class:
-            mock_agent_instance = Mock()
-            mock_agent_instance.model_copy.return_value = mock_agent_instance
-            mock_agent_class.return_value = mock_agent_instance
+        agent = self.service._create_agent(
+            llm,
+            AgentType.PLAN,
+            'Test suffix',
+            mcp_config,
+            working_dir='/workspace/project',
+            git_provider=ProviderType.GITHUB,
+            agent_settings=settings,
+        )
 
-            self.service._create_agent_with_context(
-                mock_llm,
-                AgentType.DEFAULT,
-                None,
-                mcp_config,
-                self.mock_user.condenser_max_size,
-            )
-
-            # Assert — Agent() receives core fields
-            mock_agent_class.assert_called_once()
-            call_kwargs = mock_agent_class.call_args[1]
-            assert call_kwargs['llm'] == mock_llm
-            assert call_kwargs['condenser'] == mock_condenser
-            mock_get_tools.assert_called_once_with(enable_browser=True)
-            mock_create_condenser.assert_called_once_with(
-                mock_llm, AgentType.DEFAULT, self.mock_user.condenser_max_size
-            )
-
-            # Runtime overrides applied via model_copy
-            copy_kwargs = mock_agent_instance.model_copy.call_args[1]['update']
-            assert copy_kwargs['system_prompt_kwargs']['cli_mode'] is False
-            assert copy_kwargs['mcp_config'] == mcp_config
+        assert agent.system_prompt_filename == 'system_prompt_planning.j2'
+        assert 'plan_structure' in agent.system_prompt_kwargs
+        assert agent.mcp_config == mcp_config
+        assert agent.agent_context is not None
+        assert agent.agent_context.system_message_suffix.startswith(
+            PLANNING_AGENT_INSTRUCTION
+        )
+        assert 'Test suffix' in agent.agent_context.system_message_suffix
 
     @patch(
         'openhands.app_server.app_conversation.live_status_app_conversation_service.get_default_tools',
         return_value=[],
     )
-    def test_create_agent_with_context_applies_sdk_agent_settings(
+    def test_create_agent_default_agent(self, _mock_get_tools):
+        """Default agent gets default tools and cli_mode=False."""
+        llm = LLM(model='test-model', api_key=SecretStr('k'))
+        settings = AgentSettings(llm=LLM(model='test-model'))
+
+        agent = self.service._create_agent(
+            llm,
+            AgentType.DEFAULT,
+            None,
+            {},
+            agent_settings=settings,
+        )
+
+        assert agent.system_prompt_kwargs == {'cli_mode': False}
+        assert agent.agent_context is not None
+        assert agent.agent_context.system_message_suffix is None
+
+    @patch(
+        'openhands.app_server.app_conversation.live_status_app_conversation_service.get_default_tools',
+        return_value=[],
+    )
+    def test_create_agent_applies_sdk_agent_settings(
         self, _mock_get_tools
     ):
-        """Resolved SDK AgentSettings should affect V1 agent startup."""
+        """Resolved SDK AgentSettings should affect V1 agent startup.
+
+        Settings are expected to be fully resolved by _get_agent_settings
+        (critic endpoint, model override, etc.) before reaching
+        _create_agent.
+        """
         llm = LLM(
             model='openhands/default',
             base_url='https://llm-proxy.app.all-hands.dev',
             api_key=SecretStr('test_api_key'),
         )
+        # Settings as _get_agent_settings would return them — critic
+        # endpoint already resolved.
         agent_settings = AgentSettings.model_validate(
             {
                 'llm': {
@@ -982,6 +954,8 @@ class TestLiveStatusAppConversationService:
                 'verification': {
                     'critic_enabled': True,
                     'critic_mode': 'all_actions',
+                    'critic_server_url': 'https://llm-proxy.app.all-hands.dev/vllm',
+                    'critic_model_name': 'critic',
                     'enable_iterative_refinement': True,
                     'critic_threshold': 0.75,
                     'max_refinement_iterations': 2,
@@ -989,12 +963,11 @@ class TestLiveStatusAppConversationService:
             }
         )
 
-        agent = self.service._create_agent_with_context(
+        agent = self.service._create_agent(
             llm,
             AgentType.DEFAULT,
             None,
             {},
-            condenser_max_size=None,
             agent_settings=agent_settings,
         )
 
@@ -1006,134 +979,6 @@ class TestLiveStatusAppConversationService:
         assert agent.critic.iterative_refinement is not None
         assert agent.critic.iterative_refinement.success_threshold == 0.75
         assert agent.critic.iterative_refinement.max_iterations == 2
-
-    @patch(
-        'openhands.app_server.app_conversation.live_status_app_conversation_service.get_planning_tools'
-    )
-    @patch(
-        'openhands.app_server.app_conversation.app_conversation_service_base.AppConversationServiceBase._create_condenser'
-    )
-    @patch(
-        'openhands.app_server.app_conversation.live_status_app_conversation_service.format_plan_structure'
-    )
-    def test_create_agent_with_context_planning_agent_applies_instruction(
-        self, mock_format_plan, mock_create_condenser, mock_get_tools
-    ):
-        """Test _create_agent_with_context applies PLANNING_AGENT_INSTRUCTION for plan agents."""
-        # Arrange
-        mock_llm = Mock(spec=LLM)
-        mock_llm.model_copy.return_value = mock_llm
-        mock_get_tools.return_value = []
-        mock_condenser = Mock()
-        mock_create_condenser.return_value = mock_condenser
-        mock_format_plan.return_value = 'test_plan_structure'
-        mcp_config = {}
-
-        # Act
-        with patch(
-            'openhands.app_server.app_conversation.live_status_app_conversation_service.Agent'
-        ) as mock_agent_class:
-            mock_agent_instance = Mock()
-            mock_agent_instance.model_copy.return_value = mock_agent_instance
-            mock_agent_class.return_value = mock_agent_instance
-
-            self.service._create_agent_with_context(
-                mock_llm,
-                AgentType.PLAN,
-                None,  # No existing suffix
-                mcp_config,
-                self.mock_user.condenser_max_size,
-            )
-
-            # Assert — agent_context goes to Agent() constructor
-            call_kwargs = mock_agent_class.call_args[1]
-            assert (
-                call_kwargs['agent_context'].system_message_suffix
-                == PLANNING_AGENT_INSTRUCTION
-            )
-
-    @patch(
-        'openhands.app_server.app_conversation.live_status_app_conversation_service.get_planning_tools'
-    )
-    @patch(
-        'openhands.app_server.app_conversation.app_conversation_service_base.AppConversationServiceBase._create_condenser'
-    )
-    @patch(
-        'openhands.app_server.app_conversation.live_status_app_conversation_service.format_plan_structure'
-    )
-    def test_create_agent_with_context_planning_agent_prepends_to_existing_suffix(
-        self, mock_format_plan, mock_create_condenser, mock_get_tools
-    ):
-        """Test _create_agent_with_context prepends planning instruction to existing suffix."""
-        # Arrange
-        mock_llm = Mock(spec=LLM)
-        mock_llm.model_copy.return_value = mock_llm
-        mock_get_tools.return_value = []
-        mock_condenser = Mock()
-        mock_create_condenser.return_value = mock_condenser
-        mock_format_plan.return_value = 'test_plan_structure'
-        mcp_config = {}
-        existing_suffix = 'Custom user instruction from integration'
-
-        # Act
-        with patch(
-            'openhands.app_server.app_conversation.live_status_app_conversation_service.Agent'
-        ) as mock_agent_class:
-            mock_agent_instance = Mock()
-            mock_agent_instance.model_copy.return_value = mock_agent_instance
-            mock_agent_class.return_value = mock_agent_instance
-
-            self.service._create_agent_with_context(
-                mock_llm,
-                AgentType.PLAN,
-                existing_suffix,
-                mcp_config,
-                self.mock_user.condenser_max_size,
-            )
-
-            # Assert — agent_context goes to Agent() constructor
-            call_kwargs = mock_agent_class.call_args[1]
-            suffix = call_kwargs['agent_context'].system_message_suffix
-            assert suffix.startswith(PLANNING_AGENT_INSTRUCTION)
-            assert existing_suffix in suffix
-
-    @patch(
-        'openhands.app_server.app_conversation.live_status_app_conversation_service.get_default_tools'
-    )
-    @patch(
-        'openhands.app_server.app_conversation.app_conversation_service_base.AppConversationServiceBase._create_condenser'
-    )
-    def test_create_agent_with_context_default_agent_no_planning_instruction(
-        self, mock_create_condenser, mock_get_tools
-    ):
-        """Test _create_agent_with_context does NOT add planning instruction for default agent."""
-        # Arrange
-        mock_llm = Mock(spec=LLM)
-        mock_llm.model_copy.return_value = mock_llm
-        mock_get_tools.return_value = []
-        mock_condenser = Mock()
-        mock_create_condenser.return_value = mock_condenser
-        mcp_config = {}
-
-        # Act
-        with patch(
-            'openhands.app_server.app_conversation.live_status_app_conversation_service.Agent'
-        ) as mock_agent_class:
-            mock_agent_instance = Mock()
-            mock_agent_instance.model_copy.return_value = mock_agent_instance
-            mock_agent_class.return_value = mock_agent_instance
-
-            self.service._create_agent_with_context(
-                mock_llm,
-                AgentType.DEFAULT,
-                None,
-                mcp_config,
-                self.mock_user.condenser_max_size,
-            )
-
-            # Assert — agent_context goes to Agent() constructor
-            call_kwargs = mock_agent_class.call_args[1]
-            assert call_kwargs['agent_context'].system_message_suffix is None
 
     @pytest.mark.asyncio
     async def test_finalize_conversation_request_with_skills(self):
@@ -1279,7 +1124,7 @@ class TestLiveStatusAppConversationService:
             return_value=(mock_llm, mock_mcp_config)
         )
         self.service._get_agent_settings = Mock(return_value=Mock(spec=AgentSettings))
-        self.service._create_agent_with_context = Mock(return_value=mock_agent)
+        self.service._create_agent = Mock(return_value=mock_agent)
         self.service._finalize_conversation_request = AsyncMock(
             return_value=mock_final_request
         )
@@ -1313,12 +1158,11 @@ class TestLiveStatusAppConversationService:
         # When selected_repository='test/repo', project_dir is resolved
         # to '/test/dir/repo' via get_project_dir. All downstream calls
         # (agent context, workspace, skills) must use this path.
-        self.service._create_agent_with_context.assert_called_once_with(
+        self.service._create_agent.assert_called_once_with(
             mock_llm,
             AgentType.DEFAULT,
             'Test suffix',
             mock_mcp_config,
-            self.mock_user.condenser_max_size,
             secrets=mock_secrets,
             git_provider=ProviderType.GITHUB,
             working_dir='/test/dir/repo',
@@ -2240,7 +2084,7 @@ class TestLiveStatusAppConversationService:
             return_value=mock_secrets
         )
         self.service._configure_llm_and_mcp = AsyncMock(return_value=(mock_llm, {}))
-        self.service._create_agent_with_context = Mock(return_value=mock_agent)
+        self.service._create_agent = Mock(return_value=mock_agent)
 
         captured = {}
 
@@ -2277,7 +2121,7 @@ class TestLiveStatusAppConversationService:
         self.service._configure_llm_and_mcp = AsyncMock(
             return_value=(Mock(spec=LLM), {})
         )
-        self.service._create_agent_with_context = Mock(return_value=Mock(spec=Agent))
+        self.service._create_agent = Mock(return_value=Mock(spec=Agent))
 
         captured = {}
 

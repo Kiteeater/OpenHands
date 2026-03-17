@@ -2,7 +2,6 @@ import asyncio
 import json
 import logging
 import os
-import re
 import tempfile
 import zipfile
 from collections import defaultdict
@@ -122,44 +121,6 @@ After you finalize the plan in PLAN.md:
 
 Your role ends when the plan is finalized. Implementation is handled by the code agent.
 </IMPORTANT_PLANNING_BOUNDARIES>"""
-
-
-_CRITIC_PROXY_PATTERN = re.compile(
-    r'^https?://llm-proxy\.[^./]+\.all-hands\.dev'
-)
-
-
-def _apply_critic_proxy(settings: AgentSettings, llm: LLM) -> AgentSettings:
-    """Route the critic through the LLM proxy when available.
-
-    If the LLM base URL matches the OpenHands proxy pattern, configure the
-    critic to use the proxy's ``/vllm`` endpoint.  Otherwise disable the
-    critic (external users don't have access to the hosted service).
-    """
-    if not settings.verification.critic_enabled:
-        return settings
-
-    base_url = llm.base_url
-    if base_url and _CRITIC_PROXY_PATTERN.match(base_url):
-        return settings.model_copy(
-            update={
-                'verification': settings.verification.model_copy(
-                    update={
-                        'critic_server_url': f'{base_url.rstrip("/")}/vllm',
-                        'critic_model_name': 'critic',
-                    }
-                ),
-            }
-        )
-
-    # No proxy → disable critic
-    return settings.model_copy(
-        update={
-            'verification': settings.verification.model_copy(
-                update={'critic_enabled': False}
-            ),
-        }
-    )
 
 
 @dataclass
@@ -918,15 +879,46 @@ class LiveStatusAppConversationService(AppConversationServiceBase):
     def _get_agent_settings(
         self, user: UserInfo, llm_model: str | None
     ) -> AgentSettings:
-        agent_settings = user.to_agent_settings()
-        if llm_model is None:
-            return agent_settings
+        """Resolve SDK ``AgentSettings`` for this request.
 
-        return agent_settings.model_copy(
-            update={
-                'llm': agent_settings.llm.model_copy(update={'model': llm_model}),
-            }
-        )
+        Applies model override and, for users going through the
+        OpenHands LLM proxy, fills in the critic endpoint so that
+        ``create_agent()`` builds a correctly-routed critic.
+        """
+        settings = user.to_agent_settings()
+        if llm_model is not None:
+            settings = settings.model_copy(
+                update={
+                    'llm': settings.llm.model_copy(
+                        update={'model': llm_model}
+                    ),
+                }
+            )
+
+        # Resolve critic endpoint for proxy users
+        if (
+            settings.verification.critic_enabled
+            and not settings.verification.critic_server_url
+            and settings.llm.model.startswith('openhands/')
+        ):
+            proxy_url = (
+                settings.llm.base_url or self.openhands_provider_base_url
+            )
+            if proxy_url:
+                settings = settings.model_copy(
+                    update={
+                        'verification': settings.verification.model_copy(
+                            update={
+                                'critic_server_url': (
+                                    f'{proxy_url.rstrip("/")}/vllm'
+                                ),
+                                'critic_model_name': 'critic',
+                            }
+                        ),
+                    }
+                )
+
+        return settings
 
     def _configure_llm(self, user: UserInfo, llm_model: str | None) -> LLM:
         """Configure LLM settings.
@@ -1163,41 +1155,24 @@ class LiveStatusAppConversationService(AppConversationServiceBase):
 
         return llm, mcp_config
 
-    def _create_agent_with_context(
+    def _create_agent(
         self,
         llm: LLM,
         agent_type: AgentType,
         system_message_suffix: str | None,
         mcp_config: dict,
-        condenser_max_size: int | None,
         secrets: dict[str, SecretValue] | None = None,
         git_provider: ProviderType | None = None,
         working_dir: str | None = None,
         agent_settings: AgentSettings | None = None,
     ) -> Agent:
-        """Create an agent with appropriate tools and context based on agent type.
+        """Create an agent from fully-resolved settings.
 
-        When *agent_settings* is provided the agent is built via
-        ``AgentSettings.create_agent()`` which wires LLM, condenser,
-        tools, agent_context and critic from the settings object.
-        Runtime-only overrides (MCP config, system-prompt tweaks) are
-        applied via ``model_copy`` afterwards.
-
-        Args:
-            llm: Configured LLM instance
-            agent_type: Type of agent to create (PLAN or DEFAULT)
-            system_message_suffix: Optional suffix for system messages
-            mcp_config: MCP configuration dictionary
-            condenser_max_size: condenser_max_size setting
-            secrets: Optional dictionary of secrets for authentication
-            git_provider: Optional git provider type for computing plan path
-            working_dir: Optional working directory for computing plan path
-            agent_settings: Resolved SDK agent settings for this conversation
-
-        Returns:
-            Configured Agent instance with context
+        Supplies runtime-determined fields (tools, agent context, MCP
+        config, system-prompt overrides) and delegates to
+        ``AgentSettings.create_agent()``.
         """
-        # -- Determine tools based on agent type --
+        # Tools
         plan_path = None
         if agent_type == AgentType.PLAN and working_dir:
             plan_path = self._compute_plan_path(working_dir, git_provider)
@@ -1207,7 +1182,7 @@ class LiveStatusAppConversationService(AppConversationServiceBase):
             else get_default_tools(enable_browser=True)
         )
 
-        # -- Build system message suffix --
+        # System message suffix
         effective_suffix = system_message_suffix
         if agent_type == AgentType.PLAN:
             effective_suffix = (
@@ -1216,38 +1191,20 @@ class LiveStatusAppConversationService(AppConversationServiceBase):
                 else PLANNING_AGENT_INSTRUCTION
             )
 
-        # -- Build the agent from settings when available --
-        if agent_settings is not None:
-            # Route critic through the LLM proxy (or disable it).
-            agent_settings = _apply_critic_proxy(agent_settings, llm)
-
-            # Populate runtime-determined fields, then let
-            # create_agent() wire LLM, condenser, critic, etc.
-            agent_settings = agent_settings.model_copy(
-                update={
-                    'llm': llm,
-                    'tools': tools,
-                    'agent_context': AgentContext(
-                        system_message_suffix=effective_suffix,
-                        secrets=secrets,
-                    ),
-                }
-            )
-            agent = agent_settings.create_agent()
-        else:
-            # Legacy path: no SDK settings — build agent manually.
-            condenser = self._create_condenser(llm, agent_type, condenser_max_size)
-            agent = Agent(
-                llm=llm,
-                tools=tools,
-                condenser=condenser,
-                agent_context=AgentContext(
+        # Build agent from settings
+        assert agent_settings is not None
+        agent = agent_settings.model_copy(
+            update={
+                'llm': llm,
+                'tools': tools,
+                'agent_context': AgentContext(
                     system_message_suffix=effective_suffix,
                     secrets=secrets,
                 ),
-            )
+            }
+        ).create_agent()
 
-        # -- Apply runtime-only overrides not captured by settings --
+        # Runtime-only Agent overrides not captured by settings
         runtime_overrides: dict[str, Any] = {'mcp_config': mcp_config}
         if agent_type == AgentType.PLAN:
             runtime_overrides['system_prompt_filename'] = 'system_prompt_planning.j2'
@@ -1569,13 +1526,12 @@ class LiveStatusAppConversationService(AppConversationServiceBase):
         llm, mcp_config = await self._configure_llm_and_mcp(user, llm_model)
         agent_settings = self._get_agent_settings(user, llm_model)
 
-        # Create agent with context
-        agent = self._create_agent_with_context(
+        # Create agent from settings
+        agent = self._create_agent(
             llm,
             agent_type,
             system_message_suffix,
             mcp_config,
-            user.condenser_max_size,
             secrets=secrets,
             git_provider=git_provider,
             working_dir=project_dir,
