@@ -13,9 +13,8 @@ export default [
     route("accept-tos", "routes/accept-tos.tsx"),
     route("settings", "routes/settings.tsx", [
       index("routes/llm-settings.tsx"),
-      route("security", "routes/security-settings.tsx"),
       route("condenser", "routes/condenser-settings.tsx"),
-      route("critic", "routes/critic-settings.tsx"),
+      route("verification", "routes/verification-settings.tsx"),
       route("mcp", "routes/mcp-settings.tsx"),
       route("user", "routes/user-settings.tsx"),
       route("integrations", "routes/git-settings.tsx"),

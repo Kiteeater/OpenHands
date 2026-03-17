@@ -6,6 +6,7 @@
 # Unless you are working on deprecation, please avoid extending this legacy file and consult the V1 codepaths above.
 # Tag: Legacy-V0
 # This module belongs to the old V0 web server. The V1 application server lives under openhands/app_server/.
+import importlib
 import os
 from typing import Any
 
@@ -40,17 +41,13 @@ LITE_LLM_API_URL = os.environ.get(
 
 
 def _get_sdk_settings_schema() -> dict[str, Any] | None:
-    """Return the SDK settings schema when the SDK package is installed.
-
-    Uses ``OpenHandsAgentSettings`` which extends the base SDK
-    ``AgentSettings`` with OpenHands-specific sections (e.g. *security*).
-    """
+    """Return the SDK settings schema when the SDK package is installed."""
     try:
-        from openhands.storage.data_models.settings import OpenHandsAgentSettings
-    except Exception:
+        settings_module = importlib.import_module('openhands.sdk.settings')
+    except ModuleNotFoundError:
         return None
 
-    return OpenHandsAgentSettings.export_schema().model_dump(mode='json')
+    return settings_module.AgentSettings.export_schema().model_dump(mode='json')
 
 
 def _get_sdk_field_keys(schema: dict[str, Any] | None) -> set[str]:
@@ -82,8 +79,8 @@ def _get_sdk_secret_field_keys(schema: dict[str, Any] | None) -> set[str]:
 # also written to the legacy flat field so existing consumers (session
 # init, security-analyzer setup, etc.) keep working.
 _SDK_TO_FLAT_SETTINGS: dict[str, str] = {
-    'security.confirmation_mode': 'confirmation_mode',
-    'security.security_analyzer': 'security_analyzer',
+    'verification.confirmation_mode': 'confirmation_mode',
+    'verification.security_analyzer': 'security_analyzer',
 }
 
 

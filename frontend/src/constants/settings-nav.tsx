@@ -1,7 +1,6 @@
 import { FiUsers, FiBriefcase } from "react-icons/fi";
 import CreditCardIcon from "#/icons/credit-card.svg?react";
 import KeyIcon from "#/icons/key.svg?react";
-import LightbulbIcon from "#/icons/lightbulb.svg?react";
 import LockIcon from "#/icons/lock.svg?react";
 import MemoryIcon from "#/icons/memory_icon.svg?react";
 import ServerProcessIcon from "#/icons/server-process.svg?react";
@@ -38,19 +37,14 @@ export const SAAS_NAV_ITEMS: SettingsNavItem[] = [
     text: "COMMON$LANGUAGE_MODEL_LLM",
   },
   {
-    icon: <LockIcon width={22} height={22} />,
-    to: "/settings/security",
-    text: "SETTINGS$NAV_SECURITY",
-  },
-  {
     icon: <MemoryIcon width={22} height={22} />,
     to: "/settings/condenser",
     text: "SETTINGS$NAV_CONDENSER",
   },
   {
-    icon: <LightbulbIcon width={22} height={22} />,
-    to: "/settings/critic",
-    text: "SETTINGS$NAV_CRITIC",
+    icon: <LockIcon width={22} height={22} />,
+    to: "/settings/verification",
+    text: "SETTINGS$NAV_VERIFICATION",
   },
   {
     icon: <CreditCardIcon width={22} height={22} />,
@@ -91,19 +85,14 @@ export const OSS_NAV_ITEMS: SettingsNavItem[] = [
     text: "SETTINGS$NAV_LLM",
   },
   {
-    icon: <LockIcon width={22} height={22} />,
-    to: "/settings/security",
-    text: "SETTINGS$NAV_SECURITY",
-  },
-  {
     icon: <MemoryIcon width={22} height={22} />,
     to: "/settings/condenser",
     text: "SETTINGS$NAV_CONDENSER",
   },
   {
-    icon: <LightbulbIcon width={22} height={22} />,
-    to: "/settings/critic",
-    text: "SETTINGS$NAV_CRITIC",
+    icon: <LockIcon width={22} height={22} />,
+    to: "/settings/verification",
+    text: "SETTINGS$NAV_VERIFICATION",
   },
   {
     icon: <ServerProcessIcon width={22} height={22} />,

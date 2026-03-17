@@ -970,11 +970,11 @@ class TestLiveStatusAppConversationService:
                     'api_key': 'test_api_key',
                 },
                 'condenser': {'enabled': False},
-                'critic': {
-                    'enabled': True,
-                    'mode': 'all_actions',
+                'verification': {
+                    'critic_enabled': True,
+                    'critic_mode': 'all_actions',
                     'enable_iterative_refinement': True,
-                    'threshold': 0.75,
+                    'critic_threshold': 0.75,
                     'max_refinement_iterations': 2,
                 },
             }

@@ -88,15 +88,16 @@ def test_get_sdk_settings_schema_returns_none_when_sdk_missing():
         assert mock_fn() is None
 
 
-def test_get_sdk_settings_schema_includes_security_section():
+def test_get_sdk_settings_schema_includes_verification_section():
     schema = settings_routes._get_sdk_settings_schema()
     assert schema is not None
     section_keys = [s['key'] for s in schema['sections']]
-    assert 'security' in section_keys
-    security_section = next(s for s in schema['sections'] if s['key'] == 'security')
-    field_keys = [f['key'] for f in security_section['fields']]
-    assert 'security.confirmation_mode' in field_keys
-    assert 'security.security_analyzer' in field_keys
+    assert 'verification' in section_keys
+    section = next(s for s in schema['sections'] if s['key'] == 'verification')
+    field_keys = [f['key'] for f in section['fields']]
+    assert 'verification.confirmation_mode' in field_keys
+    assert 'verification.security_analyzer' in field_keys
+    assert 'verification.critic_enabled' in field_keys
 
 
 @pytest.mark.asyncio
@@ -138,33 +139,43 @@ async def test_settings_api_endpoints(test_client):
                 ],
             },
             {
-                'key': 'critic',
-                'label': 'Critic',
+                'key': 'verification',
+                'label': 'Verification',
                 'fields': [
                     {
-                        'key': 'critic.enabled',
+                        'key': 'verification.critic_enabled',
                         'value_type': 'boolean',
                         'prominence': 'critical',
                     },
                     {
-                        'key': 'critic.mode',
+                        'key': 'verification.critic_mode',
                         'value_type': 'string',
                         'prominence': 'minor',
                     },
                     {
-                        'key': 'critic.enable_iterative_refinement',
+                        'key': 'verification.enable_iterative_refinement',
                         'value_type': 'boolean',
                         'prominence': 'major',
                     },
                     {
-                        'key': 'critic.threshold',
+                        'key': 'verification.critic_threshold',
                         'value_type': 'number',
                         'prominence': 'minor',
                     },
                     {
-                        'key': 'critic.max_refinement_iterations',
+                        'key': 'verification.max_refinement_iterations',
                         'value_type': 'integer',
                         'prominence': 'minor',
+                    },
+                    {
+                        'key': 'verification.confirmation_mode',
+                        'value_type': 'boolean',
+                        'prominence': 'major',
+                    },
+                    {
+                        'key': 'verification.security_analyzer',
+                        'value_type': 'string',
+                        'prominence': 'major',
                     },
                 ],
             },
@@ -184,11 +195,13 @@ async def test_settings_api_endpoints(test_client):
         'llm.timeout': 123,
         'llm.litellm_extra_body': {'metadata': {'tier': 'pro'}},
         'remote_runtime_resource_factor': 2,
-        'critic.enabled': True,
-        'critic.mode': 'all_actions',
-        'critic.enable_iterative_refinement': True,
-        'critic.threshold': 0.7,
-        'critic.max_refinement_iterations': 4,
+        'verification.critic_enabled': True,
+        'verification.critic_mode': 'all_actions',
+        'verification.enable_iterative_refinement': True,
+        'verification.critic_threshold': 0.7,
+        'verification.max_refinement_iterations': 4,
+        'verification.confirmation_mode': True,
+        'verification.security_analyzer': 'llm',
     }
 
     with patch(
@@ -208,8 +221,11 @@ async def test_settings_api_endpoints(test_client):
         schema = response_data['sdk_settings_schema']
         assert schema['model_name'] == 'AgentSettings'
         assert isinstance(schema['sections'], list)
-        assert [section['key'] for section in schema['sections']] == ['llm', 'critic']
-        llm_section, critic_section = schema['sections']
+        assert [section['key'] for section in schema['sections']] == [
+            'llm',
+            'verification',
+        ]
+        llm_section, verification_section = schema['sections']
         assert llm_section['label'] == 'LLM'
         assert [field['key'] for field in llm_section['fields']] == [
             'llm.model',
@@ -221,31 +237,19 @@ async def test_settings_api_endpoints(test_client):
         assert llm_section['fields'][-1]['secret'] is True
         assert llm_section['fields'][2]['value_type'] == 'integer'
         assert llm_section['fields'][3]['value_type'] == 'object'
-        assert critic_section['label'] == 'Critic'
-        assert [field['key'] for field in critic_section['fields']] == [
-            'critic.enabled',
-            'critic.mode',
-            'critic.enable_iterative_refinement',
-            'critic.threshold',
-            'critic.max_refinement_iterations',
-        ]
-        assert response_data['sdk_settings_values']['llm.model'] == 'test-model'
-        assert response_data['sdk_settings_values']['llm.timeout'] == 123
-        assert response_data['sdk_settings_values']['llm.litellm_extra_body'] == {
-            'metadata': {'tier': 'pro'}
-        }
-        assert response_data['sdk_settings_values']['critic.enabled'] is True
-        assert response_data['sdk_settings_values']['critic.mode'] == 'all_actions'
-        assert (
-            response_data['sdk_settings_values']['critic.enable_iterative_refinement']
-            is True
-        )
-        assert response_data['sdk_settings_values']['critic.threshold'] == 0.7
-        assert (
-            response_data['sdk_settings_values']['critic.max_refinement_iterations']
-            == 4
-        )
-        assert response_data['sdk_settings_values']['llm.api_key'] is None
+        assert verification_section['label'] == 'Verification'
+        vals = response_data['sdk_settings_values']
+        assert vals['llm.model'] == 'test-model'
+        assert vals['llm.timeout'] == 123
+        assert vals['llm.litellm_extra_body'] == {'metadata': {'tier': 'pro'}}
+        assert vals['verification.critic_enabled'] is True
+        assert vals['verification.critic_mode'] == 'all_actions'
+        assert vals['verification.enable_iterative_refinement'] is True
+        assert vals['verification.critic_threshold'] == 0.7
+        assert vals['verification.max_refinement_iterations'] == 4
+        assert vals['verification.confirmation_mode'] is True
+        assert vals['verification.security_analyzer'] == 'llm'
+        assert vals['llm.api_key'] is None
 
         # Test updating with partial settings
         partial_settings = {
