@@ -271,6 +271,21 @@ async def test_settings_api_endpoints(test_client):
 
 
 @pytest.mark.asyncio
+async def test_saving_settings_with_frozen_secrets_store(test_client):
+    """Regression: POSTing settings must not fail when the payload includes
+    ``secrets_store`` (a frozen field on the Settings model).
+    See https://github.com/OpenHands/OpenHands/issues/13306.
+    """
+    settings_data = {
+        'language': 'en',
+        'llm_model': 'gpt-4',
+        'secrets_store': {'provider_tokens': {}},
+    }
+    response = test_client.post('/api/settings', json=settings_data)
+    assert response.status_code == 200
+
+
+@pytest.mark.asyncio
 async def test_search_api_key_preservation(test_client):
     """Test that search_api_key is preserved when sending an empty string."""
     # 1. Set initial settings with a search API key

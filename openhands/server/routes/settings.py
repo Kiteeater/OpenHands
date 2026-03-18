@@ -104,6 +104,11 @@ def _extract_sdk_settings_values(
     return values
 
 
+_SETTINGS_FROZEN_FIELDS = frozenset(
+    name for name, field_info in Settings.model_fields.items() if field_info.frozen
+)
+
+
 def _apply_settings_payload(
     payload: dict[str, Any],
     existing_settings: Settings | None,
@@ -116,7 +121,7 @@ def _apply_settings_payload(
     sdk_settings_values = dict(settings.sdk_settings_values)
 
     for key, value in payload.items():
-        if key in Settings.model_fields:
+        if key in Settings.model_fields and key not in _SETTINGS_FROZEN_FIELDS:
             setattr(settings, key, value)
 
         if key in sdk_field_keys and key not in secret_field_keys:
