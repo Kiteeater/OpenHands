@@ -854,8 +854,7 @@ class TestLiveStatusAppConversationService:
 
         assert settings.verification.critic_enabled is True
         assert (
-            settings.verification.critic_server_url
-            == 'https://my-critic.example.com'
+            settings.verification.critic_server_url == 'https://my-critic.example.com'
         )
         assert settings.verification.critic_model_name == 'my-critic'
 
@@ -913,9 +912,7 @@ class TestLiveStatusAppConversationService:
         'openhands.app_server.app_conversation.live_status_app_conversation_service.get_default_tools',
         return_value=[],
     )
-    def test_create_agent_applies_sdk_agent_settings(
-        self, _mock_get_tools
-    ):
+    def test_create_agent_applies_sdk_agent_settings(self, _mock_get_tools):
         """Resolved SDK AgentSettings should affect V1 agent startup.
 
         Settings are expected to be fully resolved by _get_agent_settings

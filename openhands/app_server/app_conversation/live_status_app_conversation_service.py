@@ -887,9 +887,7 @@ class LiveStatusAppConversationService(AppConversationServiceBase):
         if llm_model is not None:
             settings = settings.model_copy(
                 update={
-                    'llm': settings.llm.model_copy(
-                        update={'model': llm_model}
-                    ),
+                    'llm': settings.llm.model_copy(update={'model': llm_model}),
                 }
             )
         return settings
