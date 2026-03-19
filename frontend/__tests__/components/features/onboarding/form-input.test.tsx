@@ -71,18 +71,6 @@ describe("FormInput", () => {
     expect(input).toHaveAttribute("placeholder", "Enter text here");
   });
 
-  it("should show required asterisk when required is true", () => {
-    render(<FormInput {...defaultProps} required />);
-
-    expect(screen.getByText("*")).toBeInTheDocument();
-  });
-
-  it("should not show required asterisk when required is false", () => {
-    render(<FormInput {...defaultProps} required={false} />);
-
-    expect(screen.queryByText("*")).not.toBeInTheDocument();
-  });
-
   it("should have aria-required attribute when required", () => {
     render(<FormInput {...defaultProps} required />);
 
@@ -119,5 +107,66 @@ describe("FormInput", () => {
 
     expect(label).toHaveAttribute("for", "form-input-test-input");
     expect(input).toHaveAttribute("id", "form-input-test-input");
+  });
+
+  describe("error state", () => {
+    it("should not show error border by default", () => {
+      render(<FormInput {...defaultProps} required />);
+
+      const input = screen.getByTestId("form-input-test-input");
+      expect(input).toHaveClass("border-[#242424]");
+      expect(input).not.toHaveClass("border-red-500");
+    });
+
+    it("should not show error border when showError is false", () => {
+      render(<FormInput {...defaultProps} required showError={false} />);
+
+      const input = screen.getByTestId("form-input-test-input");
+      expect(input).toHaveClass("border-[#242424]");
+      expect(input).not.toHaveClass("border-red-500");
+    });
+
+    it("should show error border when showError is true and field is empty and required", () => {
+      render(<FormInput {...defaultProps} required showError />);
+
+      const input = screen.getByTestId("form-input-test-input");
+      expect(input).toHaveClass("border-red-500");
+    });
+
+    it("should not show error border when showError is true but field has value", () => {
+      render(<FormInput {...defaultProps} required showError value="filled" />);
+
+      const input = screen.getByTestId("form-input-test-input");
+      expect(input).not.toHaveClass("border-red-500");
+      expect(input).toHaveClass("border-[#242424]");
+    });
+
+    it("should not show error border when showError is true but field is not required", () => {
+      render(<FormInput {...defaultProps} required={false} showError />);
+
+      const input = screen.getByTestId("form-input-test-input");
+      expect(input).not.toHaveClass("border-red-500");
+    });
+
+    it("should have aria-invalid true when showing error", () => {
+      render(<FormInput {...defaultProps} required showError />);
+
+      const input = screen.getByTestId("form-input-test-input");
+      expect(input).toHaveAttribute("aria-invalid", "true");
+    });
+
+    it("should have aria-invalid false when not showing error", () => {
+      render(<FormInput {...defaultProps} required showError={false} />);
+
+      const input = screen.getByTestId("form-input-test-input");
+      expect(input).toHaveAttribute("aria-invalid", "false");
+    });
+
+    it("should show error border on textarea when showError is true and empty", () => {
+      render(<FormInput {...defaultProps} rows={4} required showError />);
+
+      const textarea = screen.getByTestId("form-input-test-input");
+      expect(textarea).toHaveClass("border-red-500");
+    });
   });
 });

@@ -7,6 +7,7 @@ interface FormInputProps {
   type?: "text" | "email";
   rows?: number;
   required?: boolean;
+  showError?: boolean;
 }
 
 export function FormInput({
@@ -18,10 +19,15 @@ export function FormInput({
   type = "text",
   rows,
   required = false,
+  showError = false,
 }: FormInputProps) {
   const inputId = `form-input-${id}`;
-  const inputClassName =
-    "w-full min-h-10 rounded border border-[#242424] bg-[#050505] px-3 py-2 text-sm leading-5 text-white placeholder:text-[#8C8C8C] placeholder:leading-5 focus:border-white focus:outline-none transition-colors";
+  const hasError = showError && required && !value.trim();
+  const inputClassName = `w-full min-h-10 rounded border bg-[#050505] px-3 py-2 text-sm leading-5 text-white placeholder:text-[#8C8C8C] placeholder:leading-5 focus:outline-none transition-colors ${
+    hasError
+      ? "border-red-500 focus:border-red-500"
+      : "border-[#242424] focus:border-white"
+  }`;
 
   return (
     <div className="flex flex-col gap-1.5 w-full">
@@ -30,7 +36,6 @@ export function FormInput({
         className="text-sm font-medium leading-5 text-[#FAFAFA] cursor-pointer"
       >
         {label}
-        {required && <span className="text-red-500 ml-1" aria-hidden="true">*</span>}
       </label>
       {rows ? (
         <textarea
@@ -42,6 +47,7 @@ export function FormInput({
           rows={rows}
           required={required}
           aria-required={required}
+          aria-invalid={hasError}
           aria-label={label}
           className={`${inputClassName} h-auto resize-none`}
         />
@@ -55,6 +61,7 @@ export function FormInput({
           placeholder={placeholder}
           required={required}
           aria-required={required}
+          aria-invalid={hasError}
           aria-label={label}
           className={inputClassName}
         />

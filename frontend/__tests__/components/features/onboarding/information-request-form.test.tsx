@@ -164,4 +164,56 @@ describe("InformationRequestForm", () => {
 
     expect(screen.getByText("ENTERPRISE$SELF_HOSTED_DESCRIPTION")).toBeInTheDocument();
   });
+
+  describe("form validation", () => {
+    it("should not show error state before form submission", () => {
+      renderWithRouter();
+
+      const nameInput = screen.getByTestId("form-input-name");
+      const companyInput = screen.getByTestId("form-input-company");
+      const emailInput = screen.getByTestId("form-input-email");
+      const messageInput = screen.getByTestId("form-input-message");
+
+      expect(nameInput).toHaveAttribute("aria-invalid", "false");
+      expect(companyInput).toHaveAttribute("aria-invalid", "false");
+      expect(emailInput).toHaveAttribute("aria-invalid", "false");
+      expect(messageInput).toHaveAttribute("aria-invalid", "false");
+    });
+
+    it("should not navigate when form is submitted with empty fields", async () => {
+      const user = userEvent.setup();
+      renderWithRouter();
+
+      const submitButton = screen.getByRole("button", { name: "ENTERPRISE$FORM_SUBMIT" });
+      await user.click(submitButton);
+
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    it("should navigate when form is submitted with all fields filled", async () => {
+      const user = userEvent.setup();
+      renderWithRouter();
+
+      await user.type(screen.getByTestId("form-input-name"), "John Doe");
+      await user.type(screen.getByTestId("form-input-company"), "Acme Inc");
+      await user.type(screen.getByTestId("form-input-email"), "john@example.com");
+      await user.type(screen.getByTestId("form-input-message"), "Hello world");
+
+      const submitButton = screen.getByRole("button", { name: "ENTERPRISE$FORM_SUBMIT" });
+      await user.click(submitButton);
+
+      expect(mockNavigate).toHaveBeenCalledWith("/");
+    });
+
+    it("should have valid aria-invalid state when field has value", async () => {
+      const user = userEvent.setup();
+      renderWithRouter();
+
+      const nameInput = screen.getByTestId("form-input-name");
+      await user.type(nameInput, "John Doe");
+
+      // Field with value should not be invalid
+      expect(nameInput).toHaveAttribute("aria-invalid", "false");
+    });
+  });
 });

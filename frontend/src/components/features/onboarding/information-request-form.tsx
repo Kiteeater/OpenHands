@@ -28,9 +28,23 @@ export function InformationRequestForm({
     email: "",
     message: "",
   });
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setHasAttemptedSubmit(true);
+
+    // Check if all required fields are filled
+    const isValid =
+      formData.name.trim() &&
+      formData.company.trim() &&
+      formData.email.trim() &&
+      formData.message.trim();
+
+    if (!isValid) {
+      return;
+    }
+
     // TODO: Implement form submission
     navigate("/");
   };
@@ -84,6 +98,7 @@ export function InformationRequestForm({
             value={formData.name}
             placeholder={t(I18nKey.ENTERPRISE$FORM_NAME_PLACEHOLDER)}
             required
+            showError={hasAttemptedSubmit}
             onChange={(value) =>
               setFormData((prev) => ({ ...prev, name: value }))
             }
@@ -95,6 +110,7 @@ export function InformationRequestForm({
             value={formData.company}
             placeholder={t(I18nKey.ENTERPRISE$FORM_COMPANY_PLACEHOLDER)}
             required
+            showError={hasAttemptedSubmit}
             onChange={(value) =>
               setFormData((prev) => ({ ...prev, company: value }))
             }
@@ -107,6 +123,7 @@ export function InformationRequestForm({
             value={formData.email}
             placeholder={t(I18nKey.ENTERPRISE$FORM_EMAIL_PLACEHOLDER)}
             required
+            showError={hasAttemptedSubmit}
             onChange={(value) =>
               setFormData((prev) => ({ ...prev, email: value }))
             }
@@ -119,6 +136,7 @@ export function InformationRequestForm({
             placeholder={messagePlaceholder}
             rows={4}
             required
+            showError={hasAttemptedSubmit}
             onChange={(value) =>
               setFormData((prev) => ({ ...prev, message: value }))
             }
