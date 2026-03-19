@@ -172,6 +172,13 @@ async def keycloak_callback(
 
     authorization = await user_authorizer.authorize_user(user_info)
     if not authorization.success:
+        # For duplicate_email errors, clean up the newly created Keycloak user
+        # (only if they're not already in our UserStore, i.e., they're a new user)
+        if authorization.error_detail == 'duplicate_email':
+            existing_user = await UserStore.get_user_by_id(user_info.sub)
+            if not existing_user:
+                # New user created during OAuth should be deleted from Keycloak
+                await token_manager.delete_keycloak_user(user_info.sub)
         # Return unauthorized
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
