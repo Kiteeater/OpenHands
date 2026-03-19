@@ -1,9 +1,14 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import { I18nKey } from "#/i18n/declaration";
 import { Card } from "#/ui/card";
 import { Text } from "#/ui/typography";
 import { BrandButton } from "#/components/features/settings/brand-button";
+import {
+  InformationRequestForm,
+  RequestType,
+} from "#/components/features/onboarding/information-request-form";
 import OpenHandsLogoWhite from "#/assets/branding/openhands-logo-white.svg?react";
 import CloudIcon from "#/icons/cloud.svg?react";
 import StackedIcon from "#/icons/stacked.svg?react";
@@ -30,7 +35,7 @@ interface EnterpriseCardProps {
   title: string;
   description: string;
   features: string[];
-  learnMoreHref: string;
+  onLearnMore: () => void;
   learnMoreLabel: string;
 }
 
@@ -39,7 +44,7 @@ function EnterpriseCard({
   title,
   description,
   features,
-  learnMoreHref,
+  onLearnMore,
   learnMoreLabel,
 }: EnterpriseCardProps) {
   return (
@@ -48,26 +53,33 @@ function EnterpriseCard({
       <h3 className="text-lg font-semibold text-white">{title}</h3>
       <Text className="text-[#8C8C8C]">{description}</Text>
       <FeatureList features={features} />
-      <a
-        href={learnMoreHref}
-        target="_blank"
-        rel="noopener noreferrer"
+      <button
+        type="button"
+        onClick={onLearnMore}
         className="mt-2 w-fit px-6 py-2.5 text-sm rounded-sm bg-[#050505] text-white border border-[#242424] hover:bg-white hover:text-black transition-colors"
       >
         {learnMoreLabel}
-      </a>
+      </button>
     </Card>
   );
 }
 
-const ENTERPRISE_URL = "https://openhands.dev/enterprise/";
-
 export default function InformationRequest() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [selectedRequestType, setSelectedRequestType] =
+    useState<RequestType | null>(null);
 
   const handleBack = () => {
-    navigate(-1);
+    navigate("/login");
+  };
+
+  const handleLearnMore = (type: RequestType) => {
+    setSelectedRequestType(type);
+  };
+
+  const handleFormBack = () => {
+    setSelectedRequestType(null);
   };
 
   const saasFeatures = [
@@ -83,6 +95,22 @@ export default function InformationRequest() {
     t(I18nKey.ENTERPRISE$SELF_HOSTED_FEATURE_COMPLIANCE),
     t(I18nKey.ENTERPRISE$SELF_HOSTED_FEATURE_SUPPORT),
   ];
+
+  // Show form if a request type is selected
+  if (selectedRequestType) {
+    return (
+      <div
+        data-testid="information-request-page"
+        className="w-full max-w-4xl flex flex-col items-center gap-8 p-6"
+      >
+        <OpenHandsLogoWhite width={55} height={55} />
+        <InformationRequestForm
+          requestType={selectedRequestType}
+          onBack={handleFormBack}
+        />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -109,7 +137,7 @@ export default function InformationRequest() {
           title={t(I18nKey.ENTERPRISE$SAAS_TITLE)}
           description={t(I18nKey.ENTERPRISE$SAAS_DESCRIPTION)}
           features={saasFeatures}
-          learnMoreHref={ENTERPRISE_URL}
+          onLearnMore={() => handleLearnMore("saas")}
           learnMoreLabel={t(I18nKey.ENTERPRISE$LEARN_MORE)}
         />
         <EnterpriseCard
@@ -117,7 +145,7 @@ export default function InformationRequest() {
           title={t(I18nKey.ENTERPRISE$SELF_HOSTED_TITLE)}
           description={t(I18nKey.ENTERPRISE$SELF_HOSTED_DESCRIPTION)}
           features={selfHostedFeatures}
-          learnMoreHref={ENTERPRISE_URL}
+          onLearnMore={() => handleLearnMore("self-hosted")}
           learnMoreLabel={t(I18nKey.ENTERPRISE$LEARN_MORE)}
         />
       </div>
