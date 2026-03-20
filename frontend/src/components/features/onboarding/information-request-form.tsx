@@ -7,6 +7,7 @@ import { useSubmitEnterpriseLead } from "#/hooks/mutation/use-submit-enterprise-
 import { Card } from "#/ui/card";
 import { Text } from "#/ui/typography";
 import { isValidEmail } from "#/utils/input-validation";
+import { displayErrorToast } from "#/utils/custom-toast-handlers";
 import { FormInput } from "./form-input";
 import OpenHandsLogoWhite from "#/assets/branding/openhands-logo-white.svg?react";
 import CloudIcon from "#/icons/cloud-minimal.svg?react";
@@ -76,17 +77,9 @@ export function InformationRequestForm({
         // Navigate to login page with state to show confirmation modal
         navigate("/login", { state: { showRequestSubmittedModal: true } });
       },
-      onError: (error) => {
-        // Log error but still track and navigate on failure
-        // This ensures the user experience is not blocked by API issues
-        // eslint-disable-next-line no-console
-        console.error("Failed to submit enterprise lead form:", error);
-
-        // Still track in PostHog as a fallback
-        trackEnterpriseLeadFormSubmitted(submissionData);
-
-        // Navigate anyway to show confirmation (graceful degradation)
-        navigate("/login", { state: { showRequestSubmittedModal: true } });
+      onError: () => {
+        // Show error toast to user - do not pretend submission succeeded
+        displayErrorToast(t(I18nKey.ENTERPRISE$FORM_SUBMIT_ERROR));
       },
     });
   };
