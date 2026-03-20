@@ -23,7 +23,9 @@ router = APIRouter(prefix='/api/v1/forms', tags=['forms'])
 class FormSubmissionRequest(BaseModel):
     """Request model for form submission."""
 
-    form_type: str = Field(..., max_length=50, description='Type of form being submitted')
+    form_type: str = Field(
+        ..., max_length=50, description='Type of form being submitted'
+    )
     answers: dict[str, Any] = Field(..., description='Form answers as key-value pairs')
 
 

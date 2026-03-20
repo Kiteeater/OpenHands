@@ -299,7 +299,9 @@ class TestFormSubmissionRequest:
 
     def test_form_type_max_length(self):
         """Test form_type max length validation."""
-        with pytest.raises(Exception):  # Pydantic ValidationError
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
             FormSubmissionRequest(
                 form_type='a' * 51,  # Over 50 chars
                 answers={'key': 'value'},
