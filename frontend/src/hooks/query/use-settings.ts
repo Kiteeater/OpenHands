@@ -10,10 +10,10 @@ import { useConfig } from "./use-config";
 const getSettingsQueryFn = async (): Promise<Settings> => {
   const settings = await SettingsService.getSettings();
   const {
-    agent_settings,
-    agent_settings_schema,
-    sdk_settings_values,
-    sdk_settings_schema,
+    agent_settings: agentSettings,
+    agent_settings_schema: agentSettingsSchema,
+    sdk_settings_values: sdkSettingsValues,
+    sdk_settings_schema: sdkSettingsSchema,
     ...rest
   } = settings;
 
@@ -28,12 +28,12 @@ const getSettingsQueryFn = async (): Promise<Settings> => {
     is_new_user: false,
     v1_enabled: settings.v1_enabled ?? DEFAULT_SETTINGS.v1_enabled,
     sdk_settings_schema:
-      sdk_settings_schema ??
-      agent_settings_schema ??
+      sdkSettingsSchema ??
+      agentSettingsSchema ??
       DEFAULT_SETTINGS.sdk_settings_schema,
     sdk_settings_values:
-      sdk_settings_values ??
-      agent_settings ??
+      sdkSettingsValues ??
+      agentSettings ??
       DEFAULT_SETTINGS.sdk_settings_values,
     sandbox_grouping_strategy:
       settings.sandbox_grouping_strategy ??

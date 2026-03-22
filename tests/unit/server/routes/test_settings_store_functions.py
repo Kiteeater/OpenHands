@@ -274,7 +274,6 @@ async def test_store_llm_settings_mcp_update_preserves_base_url():
     assert result.llm_base_url == 'https://my-custom-proxy.example.com'
 
 
-
 def test_apply_payload_preserves_secrets_when_null():
     """Null/empty secret values in the payload should not overwrite existing secrets."""
     existing = _make_settings(**{'llm.api_key': 'existing-api-key'})
@@ -364,7 +363,6 @@ def test_legacy_flat_fields_migrate_to_agent_vals():
     # Properties work
     assert s.llm_model == 'gpt-4'
     assert s.agent == 'CodeActAgent'
-
 
 
 def test_agent_settings_normalized_with_schema_version_and_extras():

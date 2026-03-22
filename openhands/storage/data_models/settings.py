@@ -350,7 +350,6 @@ class Settings(BaseModel):
         self.normalize_agent_settings()
         return self
 
-
     @field_serializer('secrets_store')
     def secrets_store_serializer(self, secrets: Secrets, info: SerializationInfo):
         return {'provider_tokens': {}}
