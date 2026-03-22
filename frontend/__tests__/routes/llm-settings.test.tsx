@@ -146,6 +146,26 @@ describe("LlmSettingsScreen", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("renders schema-driven settings when backend returns canonical agent_settings fields", async () => {
+    const canonicalSettings: Settings = {
+      ...buildSettings(),
+      sdk_settings_schema: undefined,
+      sdk_settings_values: undefined,
+      agent_settings_schema: MOCK_DEFAULT_USER_SETTINGS.sdk_settings_schema,
+      agent_settings: MOCK_DEFAULT_USER_SETTINGS.sdk_settings_values,
+    };
+
+    vi.spyOn(SettingsService, "getSettings").mockResolvedValue(canonicalSettings);
+
+    renderLlmSettingsScreen();
+
+    await screen.findByTestId("llm-settings-screen");
+    expect(screen.getByTestId("sdk-settings-llm.api_key")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("sdk-settings-llm.base_url"),
+    ).toBeInTheDocument();
+  });
+
   it("saves changed schema-driven fields through the generic settings payload", async () => {
     vi.spyOn(SettingsService, "getSettings").mockResolvedValue(buildSettings());
     const saveSettingsSpy = vi

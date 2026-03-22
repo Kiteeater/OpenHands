@@ -9,8 +9,14 @@ import { useSelectedOrganizationId } from "#/context/use-selected-organization";
 type SettingsUpdate = Partial<Settings> & Record<string, unknown>;
 
 const saveSettingsMutationFn = async (settings: SettingsUpdate) => {
+  const persistableSettings: SettingsUpdate = { ...settings };
+  delete persistableSettings.sdk_settings_schema;
+  delete persistableSettings.sdk_settings_values;
+  delete persistableSettings.agent_settings_schema;
+  delete persistableSettings.agent_settings;
+
   const settingsToSave: SettingsUpdate = {
-    ...settings,
+    ...persistableSettings,
     agent: settings.agent || DEFAULT_SETTINGS.agent,
     language: settings.language || DEFAULT_SETTINGS.language,
     llm_api_key:

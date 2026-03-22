@@ -131,5 +131,7 @@ export type Settings = {
   v1_enabled?: boolean;
   sdk_settings_schema?: SettingsSchema | null;
   sdk_settings_values?: Record<string, SettingsValue> | null;
+  agent_settings_schema?: SettingsSchema | null;
+  agent_settings?: Record<string, SettingsValue> | null;
   sandbox_grouping_strategy?: SandboxGroupingStrategy;
 };
