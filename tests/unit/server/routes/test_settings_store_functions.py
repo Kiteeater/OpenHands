@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
 
+from openhands.core.config.mcp_config import MCPConfig, MCPStdioServerConfig
 from openhands.integrations.provider import ProviderToken
 from openhands.integrations.service_types import ProviderType
 from openhands.server.routes.secrets import (
@@ -15,7 +16,7 @@ from openhands.server.routes.secrets import (
 from openhands.server.routes.secrets import (
     check_provider_tokens,
 )
-from openhands.server.routes.settings import _apply_settings_payload
+from openhands.server.routes.settings import _apply_settings_payload, store_llm_settings
 from openhands.server.settings import POSTProviderModel
 from openhands.storage import get_file_store
 from openhands.storage.data_models.secrets import Secrets
@@ -221,6 +222,57 @@ def test_apply_payload_preserves_secrets_when_not_provided():
 
     assert result.llm_model == 'gpt-4'
     assert result.llm_api_key.get_secret_value() == 'existing-api-key'
+    assert result.llm_base_url is None
+
+
+@pytest.mark.asyncio
+async def test_store_llm_settings_advanced_view_clear_removes_base_url():
+    settings = Settings(
+        llm_model='gpt-4',
+        llm_base_url='',
+    )
+
+    existing_settings = Settings(
+        llm_model='gpt-4',
+        llm_api_key=SecretStr('my-api-key'),
+        llm_base_url='https://my-custom-proxy.example.com',
+    )
+
+    result = await store_llm_settings(settings, existing_settings)
+
+    assert result.llm_base_url is None
+
+
+@pytest.mark.asyncio
+async def test_store_llm_settings_mcp_update_preserves_base_url():
+    settings = Settings(
+        mcp_config=MCPConfig(
+            stdio_servers=[
+                MCPStdioServerConfig(
+                    name='my-server',
+                    command='npx',
+                    args=['-y', '@my/mcp-server'],
+                    env={
+                        'API_TOKEN': 'secret123',
+                        'ENDPOINT': 'https://example.com',
+                    },
+                )
+            ],
+        ),
+    )
+
+    existing_settings = Settings(
+        llm_model='anthropic/claude-sonnet-4-5-20250929',
+        llm_api_key=SecretStr('existing-api-key'),
+        llm_base_url='https://my-custom-proxy.example.com',
+    )
+
+    result = await store_llm_settings(settings, existing_settings)
+
+    assert result.llm_model == 'anthropic/claude-sonnet-4-5-20250929'
+    assert result.llm_api_key.get_secret_value() == 'existing-api-key'
+    assert result.llm_base_url == 'https://my-custom-proxy.example.com'
+
 
 
 def test_apply_payload_preserves_secrets_when_null():
