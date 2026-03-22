@@ -29,6 +29,7 @@ class AppConversationService(ABC):
         created_at__lt: datetime | None = None,
         updated_at__gte: datetime | None = None,
         updated_at__lt: datetime | None = None,
+        sandbox_id__eq: str | None = None,
         sort_order: AppConversationSortOrder = AppConversationSortOrder.CREATED_AT_DESC,
         page_id: str | None = None,
         limit: int = 100,
@@ -44,6 +45,7 @@ class AppConversationService(ABC):
         created_at__lt: datetime | None = None,
         updated_at__gte: datetime | None = None,
         updated_at__lt: datetime | None = None,
+        sandbox_id__eq: str | None = None,
     ) -> int:
         """Count sandboxed conversations."""
 
@@ -75,8 +77,20 @@ class AppConversationService(ABC):
         id, starting a conversation, attaching a callback, and then running the
         conversation.
 
-        Yields an instance of AppConversationStartTask as updates occur, which can be used to determine
-        the progress of the task.
+        This method returns an async iterator that yields the same
+        AppConversationStartTask repeatedly as status updates occur. Callers
+        should iterate until the task reaches a terminal status::
+
+            async for task in service.start_app_conversation(request):
+                if task.status in (
+                    AppConversationStartTaskStatus.READY,
+                    AppConversationStartTaskStatus.ERROR,
+                ):
+                    break
+
+        Status progression: WORKING → WAITING_FOR_SANDBOX → PREPARING_REPOSITORY
+        → RUNNING_SETUP_SCRIPT → SETTING_UP_GIT_HOOKS → SETTING_UP_SKILLS
+        → STARTING_CONVERSATION → READY (or ERROR at any point).
         """
         # This is an abstract method - concrete implementations should provide real values
         from openhands.app_server.app_conversation.app_conversation_models import (
@@ -95,6 +109,7 @@ class AppConversationService(ABC):
         task: AppConversationStartTask,
         sandbox: SandboxInfo,
         workspace: AsyncRemoteWorkspace,
+        agent_server_url: str,
     ) -> AsyncGenerator[AppConversationStartTask, None]:
         """Run the setup scripts for the project and yield status updates"""
         yield task
@@ -104,18 +119,25 @@ class AppConversationService(ABC):
         self, conversation_id: UUID, request: AppConversationUpdateRequest
     ) -> AppConversation | None:
         """Update an app conversation and return it. Return None if the conversation
-        did not exist."""
+        did not exist.
+        """
 
     @abstractmethod
-    async def delete_app_conversation(self, conversation_id: UUID) -> bool:
+    async def delete_app_conversation(
+        self, conversation_id: UUID, skip_agent_server_delete: bool = False
+    ) -> bool:
         """Delete a V1 conversation and all its associated data.
 
         Args:
             conversation_id: The UUID of the conversation to delete.
+            skip_agent_server_delete: If True, skip the agent server DELETE call.
+                This should be set when the sandbox is shared with other
+                conversations (e.g. created via /new) to avoid destabilizing
+                the shared runtime.
 
         This method should:
         1. Delete the conversation from the database
-        2. Call the agent server to delete the conversation
+        2. Call the agent server to delete the conversation (unless skipped)
         3. Clean up any related data
 
         Returns True if the conversation was deleted successfully, False otherwise.

@@ -14,12 +14,14 @@ import { useResendEmailVerification } from "#/hooks/mutation/use-resend-email-ve
  *   - emailVerified: boolean state for email verification status
  *   - setEmailVerified: function to control email verification status
  *   - hasDuplicatedEmail: boolean state for duplicate email error status
+ *   - recaptchaBlocked: boolean state for reCAPTCHA blocked error status
  *   - userId: string | null for the user ID from the redirect URL
  *   - resendEmailVerification: function to resend verification email
  *   - isResendingVerification: boolean indicating if resend is in progress
  *   - isCooldownActive: boolean indicating if cooldown is currently active
  *   - cooldownRemaining: number of milliseconds remaining in cooldown
  *   - formattedCooldownTime: string formatted as "M:SS" for display
+ *   - wasRateLimited: boolean indicating if the user was rate limited during OAuth flow
  */
 export function useEmailVerification() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -27,6 +29,8 @@ export function useEmailVerification() {
     React.useState(false);
   const [emailVerified, setEmailVerified] = React.useState(false);
   const [hasDuplicatedEmail, setHasDuplicatedEmail] = React.useState(false);
+  const [recaptchaBlocked, setRecaptchaBlocked] = React.useState(false);
+  const [wasRateLimited, setWasRateLimited] = React.useState(false);
   const [userId, setUserId] = React.useState<string | null>(null);
   const [lastSentTimestamp, setLastSentTimestamp] = React.useState<
     number | null
@@ -48,13 +52,14 @@ export function useEmailVerification() {
     },
   });
 
-  // Check for email verification query parameters
+  // Check for email verification and reCAPTCHA query parameters
   React.useEffect(() => {
     const emailVerificationRequired = searchParams.get(
       "email_verification_required",
     );
     const emailVerifiedParam = searchParams.get("email_verified");
     const duplicatedEmailParam = searchParams.get("duplicated_email");
+    const recaptchaBlockedParam = searchParams.get("recaptcha_blocked");
     const userIdParam = searchParams.get("user_id");
     let shouldUpdate = false;
 
@@ -73,6 +78,19 @@ export function useEmailVerification() {
     if (duplicatedEmailParam === "true") {
       setHasDuplicatedEmail(true);
       searchParams.delete("duplicated_email");
+      shouldUpdate = true;
+    }
+
+    if (recaptchaBlockedParam === "true") {
+      setRecaptchaBlocked(true);
+      searchParams.delete("recaptcha_blocked");
+      shouldUpdate = true;
+    }
+
+    const rateLimitedParam = searchParams.get("rate_limited");
+    if (rateLimitedParam === "true") {
+      setWasRateLimited(true);
+      searchParams.delete("rate_limited");
       shouldUpdate = true;
     }
 
@@ -126,6 +144,8 @@ export function useEmailVerification() {
     emailVerified,
     setEmailVerified,
     hasDuplicatedEmail,
+    recaptchaBlocked,
+    wasRateLimited,
     userId,
     resendEmailVerification: resendEmailVerificationMutation.mutate,
     isResendingVerification: resendEmailVerificationMutation.isPending,

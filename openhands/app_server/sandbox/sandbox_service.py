@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import time
 from abc import ABC, abstractmethod
 
@@ -17,6 +18,12 @@ from openhands.app_server.utils.docker_utils import (
 )
 from openhands.sdk.utils.models import DiscriminatedUnionMixin
 from openhands.sdk.utils.paging import page_iterator
+
+_logger = logging.getLogger(__name__)
+
+SESSION_API_KEY_VARIABLE = 'OH_SESSION_API_KEYS_0'
+WEBHOOK_CALLBACK_VARIABLE = 'OH_WEBHOOKS_0_BASE_URL'
+ALLOW_CORS_ORIGINS_VARIABLE = 'OH_ALLOW_CORS_ORIGINS_0'
 
 
 class SandboxService(ABC):
@@ -50,10 +57,14 @@ class SandboxService(ABC):
         return results
 
     @abstractmethod
-    async def start_sandbox(self, sandbox_spec_id: str | None = None) -> SandboxInfo:
+    async def start_sandbox(
+        self, sandbox_spec_id: str | None = None, sandbox_id: str | None = None
+    ) -> SandboxInfo:
         """Begin the process of starting a sandbox.
 
         Return the info on the new sandbox. If no spec is selected, use the default.
+        If sandbox_id is provided, it will be used as the sandbox identifier instead
+        of generating a random one.
         """
 
     @abstractmethod
@@ -125,12 +136,17 @@ class SandboxService(ABC):
         Returns:
             True if agent server is alive, False otherwise
         """
+        url = None
         try:
             agent_server_url = self._get_agent_server_url(sandbox)
             url = f'{agent_server_url.rstrip("/")}/alive'
             response = await httpx_client.get(url, timeout=5.0)
             return response.is_success
-        except Exception:
+        except Exception as exc:
+            _logger.debug(
+                f'Agent server health check failed for sandbox {sandbox.id}'
+                f'{f" at {url}" if url else ""}: {exc}'
+            )
             return False
 
     def _get_agent_server_url(self, sandbox: SandboxInfo) -> str:

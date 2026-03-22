@@ -53,6 +53,7 @@ export function useConversationNameContextMenu({
   const [metricsModalVisible, setMetricsModalVisible] = React.useState(false);
   const [systemModalVisible, setSystemModalVisible] = React.useState(false);
   const [skillsModalVisible, setSkillsModalVisible] = React.useState(false);
+  const [hooksModalVisible, setHooksModalVisible] = React.useState(false);
   const [confirmDeleteModalVisible, setConfirmDeleteModalVisible] =
     React.useState(false);
   const [confirmStopModalVisible, setConfirmStopModalVisible] =
@@ -187,6 +188,12 @@ export function useConversationNameContextMenu({
     onContextMenuToggle?.(false);
   };
 
+  const handleShowHooks = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    setHooksModalVisible(true);
+    onContextMenuToggle?.(false);
+  };
+
   const handleTogglePublic = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
@@ -199,21 +206,27 @@ export function useConversationNameContextMenu({
         isPublic: newPublicState,
       });
     }
-
-    onContextMenuToggle?.(false);
+    // Don't close menu - let user see the toggle state change
   };
+
+  const shareUrl = React.useMemo(() => {
+    if (conversationId) {
+      return `${window.location.origin}/shared/conversations/${conversationId}`;
+    }
+    return "";
+  }, [conversationId]);
 
   const handleCopyShareLink = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
 
-    if (conversationId) {
-      const shareUrl = `${window.location.origin}/shared/conversations/${conversationId}`;
-      navigator.clipboard.writeText(shareUrl);
-      displaySuccessToast(t(I18nKey.CONVERSATION$LINK_COPIED));
+    if (!shareUrl) {
+      onContextMenuToggle?.(false);
+      return;
     }
 
-    onContextMenuToggle?.(false);
+    navigator.clipboard.writeText(shareUrl);
+    displaySuccessToast(t(I18nKey.CONVERSATION$LINK_COPIED));
   };
 
   return {
@@ -227,8 +240,10 @@ export function useConversationNameContextMenu({
     handleDisplayCost,
     handleShowAgentTools,
     handleShowSkills,
+    handleShowHooks,
     handleTogglePublic,
     handleCopyShareLink,
+    shareUrl,
     handleConfirmDelete,
     handleConfirmStop,
 
@@ -239,6 +254,8 @@ export function useConversationNameContextMenu({
     setSystemModalVisible,
     skillsModalVisible,
     setSkillsModalVisible,
+    hooksModalVisible,
+    setHooksModalVisible,
     confirmDeleteModalVisible,
     setConfirmDeleteModalVisible,
     confirmStopModalVisible,
@@ -260,5 +277,11 @@ export function useConversationNameContextMenu({
     shouldShowDisplayCost: showOptions,
     shouldShowAgentTools: Boolean(showOptions && systemMessage),
     shouldShowSkills: Boolean(showOptions && conversationId),
+    shouldShowHooks: Boolean(
+      showOptions &&
+      conversationId &&
+      conversation?.conversation_version === "V1" &&
+      conversationStatus === "RUNNING",
+    ),
   };
 }

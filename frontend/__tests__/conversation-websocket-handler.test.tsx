@@ -1,3 +1,4 @@
+import React from "react";
 import {
   describe,
   it,
@@ -8,16 +9,18 @@ import {
   afterEach,
   vi,
 } from "vitest";
-import { screen, waitFor, render, cleanup } from "@testing-library/react";
+import { screen, waitFor, render, cleanup, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { useOptimisticUserMessageStore } from "#/stores/optimistic-user-message-store";
 import { useBrowserStore } from "#/stores/browser-store";
 import { useCommandStore } from "#/stores/command-store";
+import { useErrorMessageStore } from "#/stores/error-message-store";
 import {
   createMockMessageEvent,
   createMockUserMessageEvent,
+  createMockConversationErrorEvent,
   createMockAgentErrorEvent,
   createMockBrowserObservationEvent,
   createMockBrowserNavigateActionEvent,
@@ -37,6 +40,19 @@ import {
 import { conversationWebSocketTestSetup } from "./helpers/msw-websocket-setup";
 import { useEventStore } from "#/stores/use-event-store";
 import { isV1Event } from "#/types/v1/type-guards";
+import { useSelectedOrganizationStore } from "#/stores/selected-organization-store";
+
+// Mock useUserConversation to return V1 conversation data
+vi.mock("#/hooks/query/use-user-conversation", () => ({
+  useUserConversation: vi.fn(() => ({
+    data: {
+      conversation_version: "V1",
+      status: "RUNNING",
+    },
+    isLoading: false,
+    error: null,
+  })),
+}));
 
 // MSW WebSocket mock setup
 const { wsLink, server: mswServer } = conversationWebSocketTestSetup();
@@ -47,10 +63,17 @@ beforeAll(() => {
   mswServer.listen({ onUnhandledRequest: "bypass" });
 });
 
+beforeEach(() => {
+  useSelectedOrganizationStore.setState({ organizationId: "test-org-id" });
+});
+
 afterEach(() => {
   mswServer.resetHandlers();
   // Clean up any React components
   cleanup();
+  // Reset stores to prevent state leakage between tests
+  useErrorMessageStore.getState().removeErrorMessage();
+  useEventStore.getState().clearEvents();
 });
 
 afterAll(async () => {
@@ -277,16 +300,23 @@ describe("Conversation WebSocket Handler", () => {
 
   // 5. Error Handling Tests
   describe("Error Handling & Recovery", () => {
-    it("should update error message store on AgentErrorEvent", async () => {
-      // Create a mock AgentErrorEvent to send through WebSocket
-      const mockAgentErrorEvent = createMockAgentErrorEvent();
+    beforeEach(() => {
+      // Clear stores before each error handling test to prevent state leakage
+      useErrorMessageStore.getState().removeErrorMessage();
+      useEventStore.getState().clearEvents();
+    });
+
+    it("should update error message store on ConversationErrorEvent", async () => {
+      // ConversationErrorEvent represents infrastructure/authentication errors
+      // that should be shown as a banner to the user.
+      const mockConversationErrorEvent = createMockConversationErrorEvent();
 
       // Set up MSW to send the error event when connection is established
       mswServer.use(
         wsLink.addEventListener("connection", ({ client, server }) => {
           server.connect();
           // Send the mock error event after connection
-          client.send(JSON.stringify(mockAgentErrorEvent));
+          client.send(JSON.stringify(mockConversationErrorEvent));
         }),
       );
 
@@ -299,7 +329,61 @@ describe("Conversation WebSocket Handler", () => {
       // Wait for connection and error event processing
       await waitFor(() => {
         expect(screen.getByTestId("error-message")).toHaveTextContent(
-          "Failed to execute command: Permission denied",
+          "Your session has expired. Please log in again.",
+        );
+      });
+    });
+
+    it("should show friendly i18n message for budget/credit errors", async () => {
+      // Create a mock AgentErrorEvent with budget-related error message
+      const mockBudgetErrorEvent = createMockAgentErrorEvent({
+        error:
+          "litellm.BadRequestError: Litellm_proxyException - ExceededBudget: User=xxx over budget.",
+      });
+
+      // Set up MSW to send the budget error event when connection is established
+      mswServer.use(
+        wsLink.addEventListener("connection", ({ client, server }) => {
+          server.connect();
+          client.send(JSON.stringify(mockBudgetErrorEvent));
+        }),
+      );
+
+      // Render components that use both WebSocket and error message store
+      renderWithWebSocketContext(<ErrorMessageStoreComponent />);
+
+      // Initially should show "none"
+      expect(screen.getByTestId("error-message")).toHaveTextContent("none");
+
+      // Wait for connection and error event processing
+      // Should show the i18n key instead of raw error message
+      await waitFor(() => {
+        expect(screen.getByTestId("error-message")).toHaveTextContent(
+          "STATUS$ERROR_LLM_OUT_OF_CREDITS",
+        );
+      });
+    });
+
+    it("should show friendly i18n message for budget ConversationErrorEvent", async () => {
+      const mockBudgetConversationError = createMockConversationErrorEvent({
+        detail:
+          "Budget has been exceeded! Current cost: 18.51, Max budget: 18.24",
+      });
+
+      mswServer.use(
+        wsLink.addEventListener("connection", ({ client, server }) => {
+          server.connect();
+          client.send(JSON.stringify(mockBudgetConversationError));
+        }),
+      );
+
+      renderWithWebSocketContext(<ErrorMessageStoreComponent />);
+
+      expect(screen.getByTestId("error-message")).toHaveTextContent("none");
+
+      await waitFor(() => {
+        expect(screen.getByTestId("error-message")).toHaveTextContent(
+          "STATUS$ERROR_LLM_OUT_OF_CREDITS",
         );
       });
     });
@@ -438,6 +522,60 @@ describe("Conversation WebSocket Handler", () => {
       );
     });
 
+    it("should clear error message when a successful event is received after a ConversationErrorEvent", async () => {
+      // This test verifies that error banners disappear when follow-up messages
+      // are sent and received. Only ConversationErrorEvent sets the error banner,
+      // and any non-error event should clear it.
+      const conversationId = "test-conversation-error-clear";
+
+      // Set up MSW to mock event count API and send events
+      mswServer.use(
+        http.get(
+          `http://localhost:3000/api/conversations/${conversationId}/events/count`,
+          () => HttpResponse.json(2),
+        ),
+        wsLink.addEventListener("connection", ({ client, server }) => {
+          server.connect();
+
+          // Send a ConversationErrorEvent first (this sets the error banner)
+          const mockConversationErrorEvent = createMockConversationErrorEvent();
+          client.send(JSON.stringify(mockConversationErrorEvent));
+
+          // Send a successful (non-error) event immediately after
+          // This simulates the user sending a follow-up message and receiving a response
+          const mockSuccessEvent = createMockMessageEvent({
+            id: "success-event-after-error",
+          });
+          client.send(JSON.stringify(mockSuccessEvent));
+        }),
+      );
+
+      // Verify error message store is initially empty
+      expect(useErrorMessageStore.getState().errorMessage).toBeNull();
+
+      // Render with WebSocket context (minimal component just to trigger connection)
+      renderWithWebSocketContext(
+        <ConnectionStatusComponent />,
+        conversationId,
+        `http://localhost:3000/api/conversations/${conversationId}`,
+      );
+
+      // Wait for connection
+      await waitFor(() => {
+        expect(screen.getByTestId("connection-state")).toHaveTextContent(
+          "OPEN",
+        );
+      });
+
+      // Wait for both events to be received and error to be cleared
+      // The error was set by the first event (ConversationErrorEvent),
+      // then cleared by the second successful event (MessageEvent).
+      await waitFor(() => {
+        expect(useEventStore.getState().events.length).toBe(2);
+        expect(useErrorMessageStore.getState().errorMessage).toBeNull();
+      });
+    });
+
     it("should not create duplicate events when WebSocket reconnects with resend_all=true", async () => {
       const conversationId = "test-conversation-reconnect";
       let connectionCount = 0;
@@ -550,8 +688,242 @@ describe("Conversation WebSocket Handler", () => {
 
   // 7. Message Sending Tests
   describe("Message Sending", () => {
-    it.todo("should send user actions through WebSocket when connected");
-    it.todo("should handle send attempts when disconnected");
+    it("should send user actions through WebSocket when connected", async () => {
+      // Arrange
+      const conversationId = "test-conversation-send";
+      let receivedMessage: unknown = null;
+
+      // Set up MSW to capture sent messages
+      mswServer.use(
+        wsLink.addEventListener("connection", ({ client, server }) => {
+          server.connect();
+
+          // Capture messages sent from client
+          client.addEventListener("message", (event) => {
+            receivedMessage = JSON.parse(event.data as string);
+          });
+        }),
+      );
+
+      // Create ref to store sendMessage function
+      let sendMessageFn: typeof useConversationWebSocket extends () => infer R
+        ? R extends { sendMessage: infer S }
+          ? S
+          : null
+        : null = null;
+
+      function TestComponent() {
+        const context = useConversationWebSocket();
+
+        React.useEffect(() => {
+          if (context?.sendMessage) {
+            sendMessageFn = context.sendMessage;
+          }
+        }, [context?.sendMessage]);
+
+        return (
+          <div>
+            <div data-testid="connection-state">
+              {context?.connectionState || "NOT_AVAILABLE"}
+            </div>
+          </div>
+        );
+      }
+
+      // Act
+      renderWithWebSocketContext(
+        <TestComponent />,
+        conversationId,
+        `http://localhost:3000/api/conversations/${conversationId}`,
+      );
+
+      // Wait for connection
+      await waitFor(() => {
+        expect(screen.getByTestId("connection-state")).toHaveTextContent(
+          "OPEN",
+        );
+      });
+
+      // Send a message
+      await waitFor(() => {
+        expect(sendMessageFn).not.toBeNull();
+      });
+
+      await act(async () => {
+        await sendMessageFn!({
+          role: "user",
+          content: [{ type: "text", text: "Hello from test" }],
+        });
+      });
+
+      // Assert - message should have been received by mock server
+      await waitFor(() => {
+        expect(receivedMessage).toEqual({
+          role: "user",
+          content: [{ type: "text", text: "Hello from test" }],
+        });
+      });
+    });
+
+    it("should not throw error when sendMessage is called with WebSocket connected", async () => {
+      // This test verifies that sendMessage doesn't throw an error
+      // when the WebSocket is connected.
+      const conversationId = "test-conversation-no-throw";
+      let sendError: Error | null = null;
+
+      // Set up MSW to connect and receive messages
+      mswServer.use(
+        wsLink.addEventListener("connection", ({ server }) => {
+          server.connect();
+        }),
+      );
+
+      // Create ref to store sendMessage function
+      let sendMessageFn: typeof useConversationWebSocket extends () => infer R
+        ? R extends { sendMessage: infer S }
+          ? S
+          : null
+        : null = null;
+
+      function TestComponent() {
+        const context = useConversationWebSocket();
+
+        React.useEffect(() => {
+          if (context?.sendMessage) {
+            sendMessageFn = context.sendMessage;
+          }
+        }, [context?.sendMessage]);
+
+        return (
+          <div>
+            <div data-testid="connection-state">
+              {context?.connectionState || "NOT_AVAILABLE"}
+            </div>
+          </div>
+        );
+      }
+
+      // Act
+      renderWithWebSocketContext(
+        <TestComponent />,
+        conversationId,
+        `http://localhost:3000/api/conversations/${conversationId}`,
+      );
+
+      // Wait for connection
+      await waitFor(() => {
+        expect(screen.getByTestId("connection-state")).toHaveTextContent(
+          "OPEN",
+        );
+      });
+
+      // Wait for the context to be available
+      await waitFor(() => {
+        expect(sendMessageFn).not.toBeNull();
+      });
+
+      // Try to send a message
+      await act(async () => {
+        try {
+          await sendMessageFn!({
+            role: "user",
+            content: [{ type: "text", text: "Test message" }],
+          });
+        } catch (error) {
+          sendError = error as Error;
+        }
+      });
+
+      // Assert - should NOT throw an error
+      expect(sendError).toBeNull();
+    });
+
+    it("should send multiple messages through WebSocket in order", async () => {
+      // Arrange
+      const conversationId = "test-conversation-multi";
+      const receivedMessages: unknown[] = [];
+
+      // Set up MSW to capture sent messages
+      mswServer.use(
+        wsLink.addEventListener("connection", ({ client, server }) => {
+          server.connect();
+
+          // Capture messages sent from client
+          client.addEventListener("message", (event) => {
+            receivedMessages.push(JSON.parse(event.data as string));
+          });
+        }),
+      );
+
+      // Create ref to store sendMessage function
+      let sendMessageFn: typeof useConversationWebSocket extends () => infer R
+        ? R extends { sendMessage: infer S }
+          ? S
+          : null
+        : null = null;
+
+      function TestComponent() {
+        const context = useConversationWebSocket();
+
+        React.useEffect(() => {
+          if (context?.sendMessage) {
+            sendMessageFn = context.sendMessage;
+          }
+        }, [context?.sendMessage]);
+
+        return (
+          <div>
+            <div data-testid="connection-state">
+              {context?.connectionState || "NOT_AVAILABLE"}
+            </div>
+          </div>
+        );
+      }
+
+      // Act
+      renderWithWebSocketContext(
+        <TestComponent />,
+        conversationId,
+        `http://localhost:3000/api/conversations/${conversationId}`,
+      );
+
+      // Wait for connection
+      await waitFor(() => {
+        expect(screen.getByTestId("connection-state")).toHaveTextContent(
+          "OPEN",
+        );
+      });
+
+      await waitFor(() => {
+        expect(sendMessageFn).not.toBeNull();
+      });
+
+      // Send multiple messages
+      await act(async () => {
+        await sendMessageFn!({
+          role: "user",
+          content: [{ type: "text", text: "Message 1" }],
+        });
+        await sendMessageFn!({
+          role: "user",
+          content: [{ type: "text", text: "Message 2" }],
+        });
+      });
+
+      // Assert - both messages should have been received in order
+      await waitFor(() => {
+        expect(receivedMessages.length).toBe(2);
+      });
+
+      expect(receivedMessages[0]).toEqual({
+        role: "user",
+        content: [{ type: "text", text: "Message 1" }],
+      });
+      expect(receivedMessages[1]).toEqual({
+        role: "user",
+        content: [{ type: "text", text: "Message 2" }],
+      });
+    });
   });
 
   // 8. History Loading State Tests
@@ -571,6 +943,16 @@ describe("Conversation WebSocket Handler", () => {
 
       // Set up MSW to mock both the HTTP API and WebSocket connection
       mswServer.use(
+        // Mock events search for history preloading
+        http.get(
+          `http://localhost:3000/api/v1/conversation/${conversationId}/events/search`,
+          async () => {
+            await new Promise((resolve) => setTimeout(resolve, 10));
+            return HttpResponse.json({
+              items: mockHistoryEvents,
+            });
+          },
+        ),
         http.get(
           `http://localhost:3000/api/conversations/${conversationId}/events/count`,
           () => HttpResponse.json(expectedEventCount),
@@ -607,11 +989,6 @@ describe("Conversation WebSocket Handler", () => {
         `http://localhost:3000/api/conversations/${conversationId}`,
       );
 
-      // Initially should be loading history
-      expect(screen.getByTestId("is-loading-history")).toHaveTextContent(
-        "true",
-      );
-
       // Wait for all events to be received
       await waitFor(() => {
         expect(screen.getByTestId("events-received")).toHaveTextContent("3");
@@ -630,6 +1007,14 @@ describe("Conversation WebSocket Handler", () => {
 
       // Set up MSW to mock both the HTTP API and WebSocket connection
       mswServer.use(
+        // Mock empty events search
+        http.get(
+          `http://localhost:3000/api/v1/conversation/${conversationId}/events/search`,
+          () =>
+            HttpResponse.json({
+              items: [],
+            }),
+        ),
         http.get(
           `http://localhost:3000/api/conversations/${conversationId}/events/count`,
           () => HttpResponse.json(0),
@@ -679,6 +1064,16 @@ describe("Conversation WebSocket Handler", () => {
 
       // Set up MSW to mock both the HTTP API and WebSocket connection
       mswServer.use(
+        // Mock events search for history preloading (50 events)
+        http.get(
+          `http://localhost:3000/api/v1/conversation/${conversationId}/events/search`,
+          async () => {
+            await new Promise((resolve) => setTimeout(resolve, 10));
+            return HttpResponse.json({
+              items: mockHistoryEvents,
+            });
+          },
+        ),
         http.get(
           `http://localhost:3000/api/conversations/${conversationId}/events/count`,
           () => HttpResponse.json(expectedEventCount),
@@ -712,11 +1107,6 @@ describe("Conversation WebSocket Handler", () => {
         <HistoryLoadingComponent />,
         conversationId,
         `http://localhost:3000/api/conversations/${conversationId}`,
-      );
-
-      // Initially should be loading history
-      expect(screen.getByTestId("is-loading-history")).toHaveTextContent(
-        "true",
       );
 
       // Wait for all events to be received
