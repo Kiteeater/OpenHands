@@ -13,7 +13,6 @@ from storage.user import User
 from storage.user_settings import UserSettings
 
 
-
 def test_get_kwargs_from_user_settings_backfills_agent_settings_from_legacy_fields():
     user_settings = UserSettings(
         llm_api_key='legacy-secret',
@@ -32,7 +31,9 @@ def test_get_kwargs_from_user_settings_backfills_agent_settings_from_legacy_fiel
 
     assert kwargs['agent_settings']['schema_version'] == 1
     assert 'llm.api_key' not in kwargs['agent_settings']
-    assert kwargs['agent_settings']['llm.model'] == 'anthropic/claude-sonnet-4-5-20250929'
+    assert (
+        kwargs['agent_settings']['llm.model'] == 'anthropic/claude-sonnet-4-5-20250929'
+    )
     assert kwargs['agent_settings']['llm.base_url'] == 'https://api.example.com'
     assert kwargs['agent_settings']['max_iterations'] == 42
     assert kwargs['agent_settings'] == {

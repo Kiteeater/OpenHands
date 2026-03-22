@@ -26,7 +26,6 @@ def mock_config():
     return config
 
 
-
 def test_member_scoped_agent_settings_filters_effective_settings(mock_config):
     store = SaasSettingsStore('test-user-id', mock_config)
     effective_settings = Settings(

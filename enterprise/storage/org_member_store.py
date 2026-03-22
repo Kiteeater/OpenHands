@@ -17,7 +17,6 @@ from storage.user_settings import UserSettings
 
 from openhands.storage.data_models.settings import Settings
 
-
 _MEMBER_SCOPED_AGENT_SETTINGS_KEYS = {
     'schema_version',
     'llm.model',

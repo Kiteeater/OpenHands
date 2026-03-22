@@ -28,7 +28,6 @@ from openhands.server.settings import Settings
 from openhands.storage.settings.settings_store import SettingsStore
 from openhands.utils.llm import is_openhands_model
 
-
 _MEMBER_SCOPED_AGENT_SETTINGS_KEYS = {
     'schema_version',
     'llm.model',
@@ -99,7 +98,6 @@ class SaasSettingsStore(SettingsStore):
             )
             await session.execute(stmt)
             await session.commit()
-
 
     async def load(self) -> Settings | None:
         user = await UserStore.get_user_by_id(self.user_id)

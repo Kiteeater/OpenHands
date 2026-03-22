@@ -24,11 +24,15 @@ _EMPTY_JSON = sa.text("'{}'::json")
 def upgrade() -> None:
     op.add_column(
         'user_settings',
-        sa.Column('agent_settings', sa.JSON(), nullable=False, server_default=_EMPTY_JSON),
+        sa.Column(
+            'agent_settings', sa.JSON(), nullable=False, server_default=_EMPTY_JSON
+        ),
     )
     op.add_column(
         'org_member',
-        sa.Column('agent_settings', sa.JSON(), nullable=False, server_default=_EMPTY_JSON),
+        sa.Column(
+            'agent_settings', sa.JSON(), nullable=False, server_default=_EMPTY_JSON
+        ),
     )
 
     op.execute(
