@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from enum import Enum
 from functools import lru_cache
-from typing import Annotated, Any
+from typing import Annotated, Any, get_args, get_origin
 
+from fastmcp.mcp_config import MCPConfig as SDKMCPConfig
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    PrivateAttr,
     SecretStr,
     SerializationInfo,
     field_serializer,
@@ -15,7 +17,7 @@ from pydantic import (
 )
 
 from openhands.core.config.llm_config import LLMConfig
-from openhands.core.config.mcp_config import MCPConfig
+from openhands.core.config.mcp_config import MCPConfig as LegacyMCPConfig
 from openhands.core.config.utils import load_openhands_config
 from openhands.sdk.settings import AgentSettings
 from openhands.storage.data_models.secrets import Secrets
@@ -67,20 +69,212 @@ def _lookup_dotted_value(source: dict[str, Any], dotted_key: str) -> Any:
 
 
 def _normalize_persisted_sdk_value(dotted_key: str, value: Any) -> Any:
-    if dotted_key == 'llm.model' and isinstance(value, str):
-        if value.startswith('openhands/'):
-            return value
-        if value.startswith('litellm_proxy/'):
-            return f'openhands/{value.removeprefix("litellm_proxy/")}'
-    return value
+    normalized_value = _coerce_agent_setting_value(value)
+    if dotted_key == 'llm.model' and isinstance(normalized_value, str):
+        if normalized_value.startswith('openhands/'):
+            return normalized_value
+        if normalized_value.startswith('litellm_proxy/'):
+            return f'openhands/{normalized_value.removeprefix("litellm_proxy/")}'
+    return normalized_value
+
+
+@lru_cache(maxsize=1)
+def _default_agent_settings_payload() -> dict[str, Any]:
+    return AgentSettings().model_dump(mode='python', exclude_none=True)
+
+
+@lru_cache(maxsize=1)
+def _sdk_uses_typed_mcp_config() -> bool:
+    annotation = AgentSettings.model_fields['mcp_config'].annotation
+    if annotation is SDKMCPConfig:
+        return True
+
+    origin = get_origin(annotation)
+    if origin is not None:
+        return SDKMCPConfig in get_args(annotation)
+
+    return False
 
 
 def _coerce_agent_setting_value(value: Any) -> Any:
     if isinstance(value, SecretStr):
         return value.get_secret_value()
-    if isinstance(value, MCPConfig):
+    if isinstance(value, SDKMCPConfig):
+        return value.model_dump(exclude_none=True, exclude_defaults=True)
+    if isinstance(value, LegacyMCPConfig):
         return value.model_dump(mode='python')
     return value
+
+
+def _legacy_mcp_config_to_sdk(value: LegacyMCPConfig) -> SDKMCPConfig | None:
+    mcp_servers: dict[str, Any] = {}
+
+    for index, sse_server in enumerate(value.sse_servers):
+        sse_server_config: dict[str, Any] = {
+            'transport': 'sse',
+            'url': sse_server.url,
+        }
+        if sse_server.api_key:
+            sse_server_config['auth'] = sse_server.api_key
+        mcp_servers[f'sse_{index}'] = sse_server_config
+
+    for index, shttp_server in enumerate(value.shttp_servers):
+        shttp_server_config: dict[str, Any] = {
+            'transport': 'http',
+            'url': shttp_server.url,
+        }
+        if shttp_server.api_key:
+            shttp_server_config['auth'] = shttp_server.api_key
+        if shttp_server.timeout is not None:
+            shttp_server_config['timeout'] = shttp_server.timeout
+        mcp_servers[f'shttp_{index}'] = shttp_server_config
+
+    for stdio_server in value.stdio_servers:
+        stdio_server_config: dict[str, Any] = {'command': stdio_server.command}
+        if stdio_server.args:
+            stdio_server_config['args'] = list(stdio_server.args)
+        if stdio_server.env:
+            stdio_server_config['env'] = dict(stdio_server.env)
+        mcp_servers[stdio_server.name] = stdio_server_config
+
+    if not mcp_servers:
+        return None
+    return SDKMCPConfig.model_validate({'mcpServers': mcp_servers})
+
+
+def _sdk_mcp_config_to_legacy(value: SDKMCPConfig) -> LegacyMCPConfig:
+    raw_config = value.model_dump(exclude_none=True)
+    sse_servers: list[dict[str, Any]] = []
+    shttp_servers: list[dict[str, Any]] = []
+    stdio_servers: list[dict[str, Any]] = []
+
+    for server_name, server_config in raw_config.get('mcpServers', {}).items():
+        url = server_config.get('url')
+        if url:
+            transport = server_config.get('transport')
+            if transport is None:
+                transport = 'sse' if '/sse' in str(url).lower() else 'http'
+
+            legacy_server: dict[str, Any] = {'url': url}
+            auth = server_config.get('auth')
+            if isinstance(auth, str) and auth != 'oauth':
+                legacy_server['api_key'] = auth
+
+            if transport == 'sse':
+                sse_servers.append(legacy_server)
+                continue
+
+            if server_config.get('timeout') is not None:
+                legacy_server['timeout'] = server_config['timeout']
+            shttp_servers.append(legacy_server)
+            continue
+
+        stdio_server: dict[str, Any] = {
+            'name': server_name,
+            'command': server_config['command'],
+        }
+        if server_config.get('args'):
+            stdio_server['args'] = server_config['args']
+        if server_config.get('env'):
+            stdio_server['env'] = server_config['env']
+        stdio_servers.append(stdio_server)
+
+    return LegacyMCPConfig.model_validate(
+        {
+            'sse_servers': sse_servers,
+            'shttp_servers': shttp_servers,
+            'stdio_servers': stdio_servers,
+        }
+    )
+
+
+def _sdk_mcp_config_from_value(value: Any) -> SDKMCPConfig | None:
+    if value in (None, {}):
+        return None
+    if isinstance(value, SDKMCPConfig):
+        return value if value.mcpServers else None
+    if isinstance(value, LegacyMCPConfig):
+        return _legacy_mcp_config_to_sdk(value)
+    if isinstance(value, dict) and 'mcpServers' in value:
+        if not value.get('mcpServers'):
+            return None
+        return SDKMCPConfig.model_validate(value)
+    return _legacy_mcp_config_to_sdk(LegacyMCPConfig.model_validate(value))
+
+
+def _merge_sdk_mcp_configs(
+    base_config: SDKMCPConfig | None, extra_config: SDKMCPConfig | None
+) -> SDKMCPConfig | None:
+    if base_config is None:
+        return extra_config
+    if extra_config is None:
+        return base_config
+
+    merged_servers: dict[str, Any] = {}
+
+    def _add_server(server_name: str, server_config: dict[str, Any]) -> None:
+        candidate = server_name or 'server'
+        if candidate not in merged_servers:
+            merged_servers[candidate] = server_config
+            return
+
+        suffix = 1
+        while f'{candidate}_{suffix}' in merged_servers:
+            suffix += 1
+        merged_servers[f'{candidate}_{suffix}'] = server_config
+
+    for config in (base_config, extra_config):
+        raw_config = _coerce_agent_setting_value(config)
+        for server_name, server_config in raw_config.get('mcpServers', {}).items():
+            _add_server(server_name, server_config)
+
+    if not merged_servers:
+        return None
+
+    return SDKMCPConfig.model_validate({'mcpServers': merged_servers})
+
+
+def _legacy_mcp_config_from_value(value: Any) -> LegacyMCPConfig | None:
+    if value in (None, {}):
+        return None
+    if isinstance(value, LegacyMCPConfig):
+        return value
+    if isinstance(value, SDKMCPConfig):
+        return _sdk_mcp_config_to_legacy(value)
+    if isinstance(value, dict) and 'mcpServers' in value:
+        return _sdk_mcp_config_to_legacy(SDKMCPConfig.model_validate(value))
+    return LegacyMCPConfig.model_validate(value)
+
+
+def _normalize_agent_setting_value(key: str, value: Any) -> Any:
+    if key == 'mcp_config':
+        sdk_mcp_config = _sdk_mcp_config_from_value(value)
+        if sdk_mcp_config is None:
+            return None
+        return _coerce_agent_setting_value(sdk_mcp_config)
+    return _coerce_agent_setting_value(value)
+
+
+def _build_sdk_agent_settings_payload(agent_settings: dict[str, Any]) -> dict[str, Any]:
+    payload: dict[str, Any] = {}
+    for key, value in agent_settings.items():
+        if key == 'schema_version':
+            continue
+
+        normalized_value = _coerce_agent_setting_value(value)
+        if key == 'mcp_config':
+            sdk_mcp_config = _sdk_mcp_config_from_value(normalized_value)
+            if sdk_mcp_config is None:
+                normalized_value = None if _sdk_uses_typed_mcp_config() else {}
+            elif _sdk_uses_typed_mcp_config():
+                normalized_value = sdk_mcp_config
+            else:
+                normalized_value = sdk_mcp_config.model_dump(
+                    exclude_none=True, exclude_defaults=True
+                )
+
+        _assign_dotted_value(payload, key, normalized_value)
+    return payload
 
 
 class SandboxGroupingStrategy(str, Enum):
@@ -121,78 +315,91 @@ class Settings(BaseModel):
     git_user_name: str | None = None
     git_user_email: str | None = None
     v1_enabled: bool = True
-    agent_settings: dict[str, Any] = Field(default_factory=dict)
+    raw_agent_settings: dict[str, Any] = Field(
+        default_factory=dict, alias='agent_settings'
+    )
     sandbox_grouping_strategy: SandboxGroupingStrategy = (
         SandboxGroupingStrategy.NO_GROUPING
     )
 
-    model_config = ConfigDict(validate_assignment=True)
+    model_config = ConfigDict(
+        validate_assignment=True, populate_by_name=True, serialize_by_alias=True
+    )
+    _agent_settings: AgentSettings = PrivateAttr(default_factory=AgentSettings)
+
+    @property
+    def agent_settings(self) -> AgentSettings:
+        return self._agent_settings
+
+    def to_legacy_mcp_config(self) -> LegacyMCPConfig | None:
+        return _legacy_mcp_config_from_value(self.agent_settings.mcp_config)
+
+    def _reload_agent_settings(self) -> None:
+        payload = _build_sdk_agent_settings_payload(self.raw_agent_settings)
+        self._agent_settings = AgentSettings.model_validate(payload)
 
     def get_agent_setting(self, key: str, default: Any = None) -> Any:
-        return self.agent_settings.get(key, default)
+        return self.raw_agent_settings.get(key, default)
 
     def set_agent_setting(self, key: str, value: Any) -> None:
         if value is None:
-            self.agent_settings.pop(key, None)
-            return
-        self.agent_settings[key] = _coerce_agent_setting_value(value)
+            self.raw_agent_settings.pop(key, None)
+        else:
+            self.raw_agent_settings[key] = _normalize_agent_setting_value(key, value)
+        self.normalize_agent_settings()
 
     def get_secret_agent_setting(self, key: str) -> SecretStr | None:
-        value = self.agent_settings.get(key)
+        value = self.raw_agent_settings.get(key)
         if not value:
             return None
         return SecretStr(str(value))
 
     @property
     def llm_api_key_is_set(self) -> bool:
-        val = self.agent_settings.get('llm.api_key')
+        val = self.raw_agent_settings.get('llm.api_key')
         return bool(val and str(val).strip())
+
+    def agent_settings_values(
+        self, *, strip_secret_values: bool = False
+    ) -> dict[str, Any]:
+        field_keys, secret_keys = _sdk_schema_field_metadata()
+        payload = self.agent_settings.model_dump(mode='python', exclude_none=True)
+        default_payload = _default_agent_settings_payload()
+        values = {
+            key: value
+            for key, value in self.raw_agent_settings.items()
+            if key not in field_keys and key != 'schema_version'
+        }
+        values['schema_version'] = self.raw_agent_settings.get('schema_version', 1)
+
+        for key in field_keys:
+            value = _lookup_dotted_value(payload, key)
+            if value is None:
+                continue
+            default_value = _lookup_dotted_value(default_payload, key)
+            if key not in self.raw_agent_settings and value == default_value:
+                continue
+            if strip_secret_values and key in secret_keys:
+                continue
+            values[key] = _normalize_persisted_sdk_value(key, value)
+
+        return values
 
     def normalized_agent_settings(
         self, *, strip_secret_values: bool = False
     ) -> dict[str, Any]:
         """Return a canonical flat agent_settings mapping for persistence."""
-        payload: dict[str, Any] = {}
-        for key, value in self.agent_settings.items():
-            if key == 'schema_version':
-                payload['schema_version'] = value
-                continue
-            _assign_dotted_value(payload, key, _coerce_agent_setting_value(value))
-
-        try:
-            migrated_payload = AgentSettings._migrate_schema(dict(payload))
-            if not isinstance(migrated_payload, dict):
-                return dict(self.agent_settings)
-        except Exception:
-            return dict(self.agent_settings)
-
-        field_keys, secret_keys = _sdk_schema_field_metadata()
-        extras = {
-            key: value
-            for key, value in self.agent_settings.items()
-            if key not in field_keys and key != 'schema_version'
-        }
-        normalized = dict(extras)
-        normalized['schema_version'] = migrated_payload.get('schema_version', 1)
-
-        for key in field_keys:
-            value = _lookup_dotted_value(migrated_payload, key)
-            if value is None:
-                continue
-            if strip_secret_values and key in secret_keys:
-                continue
-            normalized[key] = _normalize_persisted_sdk_value(key, value)
-
-        return normalized
+        return self.agent_settings_values(strip_secret_values=strip_secret_values)
 
     def normalize_agent_settings(self, *, strip_secret_values: bool = False) -> bool:
+        self._reload_agent_settings()
         normalized = self.normalized_agent_settings(
             strip_secret_values=strip_secret_values
         )
-        if normalized == self.agent_settings:
-            return False
-        object.__setattr__(self, 'agent_settings', normalized)
-        return True
+        changed = normalized != self.raw_agent_settings
+        if changed:
+            object.__setattr__(self, 'raw_agent_settings', normalized)
+        return changed
 
     @field_serializer('search_api_key')
     def api_key_serializer(self, api_key: SecretStr | None, info: SerializationInfo):
@@ -206,8 +413,8 @@ class Settings(BaseModel):
             return secret_value
         return str(api_key)
 
-    @field_serializer('agent_settings')
-    def agent_settings_field_serializer(
+    @field_serializer('raw_agent_settings')
+    def raw_agent_settings_field_serializer(
         self, values: dict[str, Any], info: SerializationInfo
     ) -> dict[str, Any]:
         """Expose secret SDK values only when ``expose_secrets`` is set."""
@@ -231,7 +438,9 @@ class Settings(BaseModel):
         if not isinstance(data, dict):
             return data
 
-        agent_vals: dict[str, Any] = dict(data.get('agent_settings') or {})
+        raw_agent_settings = data.pop('raw_agent_settings', None)
+        agent_settings = data.pop('agent_settings', None)
+        agent_vals: dict[str, Any] = dict(raw_agent_settings or agent_settings or {})
 
         for legacy_key in ('sdk_settings_values', 'mcp_config'):
             legacy_agent_vals = data.pop(legacy_key, None)
@@ -239,10 +448,13 @@ class Settings(BaseModel):
                 legacy_agent_vals, dict
             ):
                 for key, value in legacy_agent_vals.items():
-                    agent_vals.setdefault(key, _coerce_agent_setting_value(value))
+                    agent_vals.setdefault(
+                        key, _normalize_agent_setting_value(key, value)
+                    )
             elif legacy_key == 'mcp_config' and legacy_agent_vals is not None:
                 agent_vals.setdefault(
-                    'mcp_config', _coerce_agent_setting_value(legacy_agent_vals)
+                    'mcp_config',
+                    _normalize_agent_setting_value('mcp_config', legacy_agent_vals),
                 )
 
         for flat_key, sdk_key in _LEGACY_FLAT_TO_SDK.items():
@@ -251,12 +463,12 @@ class Settings(BaseModel):
                 if value is not None:
                     if isinstance(value, str) and value.startswith('**'):
                         continue
-                    agent_vals[sdk_key] = _coerce_agent_setting_value(value)
+                    agent_vals[sdk_key] = _normalize_agent_setting_value(sdk_key, value)
 
         for flat_key in _LEGACY_FLAT_TO_SDK:
             data.pop(flat_key, None)
 
-        data['agent_settings'] = agent_vals
+        data['raw_agent_settings'] = agent_vals
 
         secrets_store = data.get('secrets_store')
         if isinstance(secrets_store, dict):
@@ -324,32 +536,19 @@ class Settings(BaseModel):
         if not config_settings:
             return self
 
-        config_mcp_raw = config_settings.agent_settings.get('mcp_config')
-        if not config_mcp_raw:
-            return self
-
-        config_mcp = MCPConfig.model_validate(config_mcp_raw)
-        current_mcp_raw = self.agent_settings.get('mcp_config')
-        if not current_mcp_raw:
-            self.agent_settings['mcp_config'] = config_mcp.model_dump(mode='python')
-            self.normalize_agent_settings()
-            return self
-
-        current_mcp = MCPConfig.model_validate(current_mcp_raw)
-        merged_mcp = MCPConfig(
-            sse_servers=list(config_mcp.sse_servers) + list(current_mcp.sse_servers),
-            stdio_servers=list(config_mcp.stdio_servers)
-            + list(current_mcp.stdio_servers),
-            shttp_servers=list(config_mcp.shttp_servers)
-            + list(current_mcp.shttp_servers),
+        merged_mcp = _merge_sdk_mcp_configs(
+            _sdk_mcp_config_from_value(
+                config_settings.raw_agent_settings.get('mcp_config')
+            ),
+            _sdk_mcp_config_from_value(self.raw_agent_settings.get('mcp_config')),
         )
-        self.agent_settings['mcp_config'] = merged_mcp.model_dump(mode='python')
+        if merged_mcp is None:
+            return self
+
+        self.raw_agent_settings['mcp_config'] = _coerce_agent_setting_value(merged_mcp)
         self.normalize_agent_settings()
         return self
 
     def to_agent_settings(self) -> AgentSettings:
-        """Build SDK ``AgentSettings`` from persisted ``agent_settings``."""
-        payload: dict[str, Any] = {}
-        for key, value in self.agent_settings.items():
-            _assign_dotted_value(payload, key, _coerce_agent_setting_value(value))
-        return AgentSettings.model_validate(payload)
+        """Return the cached SDK ``AgentSettings`` model."""
+        return self.agent_settings

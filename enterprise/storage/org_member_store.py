@@ -176,7 +176,7 @@ class OrgMemberStore:
     @staticmethod
     def get_kwargs_from_user_settings(user_settings: UserSettings):
         settings = user_settings.to_settings()
-        agent_settings = settings.to_agent_settings()
+        agent_settings = settings.agent_settings
         return {
             'llm_api_key': user_settings.llm_api_key,
             'llm_model': agent_settings.llm.model,

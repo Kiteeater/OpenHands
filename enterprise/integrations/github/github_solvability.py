@@ -106,7 +106,7 @@ async def summarize_issue_solvability(
             f'Solvability analysis disabled for user {github_view.user_info.user_id}'
         )
 
-    agent_settings = user_settings.to_agent_settings()
+    agent_settings = user_settings.agent_settings
     llm_settings = agent_settings.llm
     if llm_settings.api_key is None:
         raise ValueError(

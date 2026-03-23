@@ -76,7 +76,7 @@ def _extract_agent_settings(
     Secret fields with a value are redacted to ``"<hidden>"``;
     unset secrets become ``None``.
     """
-    values = dict(settings.agent_settings)
+    values = settings.agent_settings_values()
     for field_key in _get_schema_secret_field_keys(schema):
         raw = values.get(field_key)
         values[field_key] = _SECRET_REDACTED if raw else None
@@ -103,7 +103,7 @@ def _apply_settings_payload(
 
     schema_field_keys = _get_schema_field_keys(agent_schema)
     secret_field_keys = _get_schema_secret_field_keys(agent_schema)
-    agent_settings = dict(settings.agent_settings)
+    agent_settings = dict(settings.raw_agent_settings)
 
     for key, value in payload.items():
         if key in schema_field_keys:
@@ -117,7 +117,8 @@ def _apply_settings_payload(
         elif key in Settings.model_fields and key not in _SETTINGS_FROZEN_FIELDS:
             setattr(settings, key, value)
 
-    settings.agent_settings = agent_settings
+    object.__setattr__(settings, 'raw_agent_settings', agent_settings)
+    settings.normalize_agent_settings()
     return settings
 
 
@@ -165,7 +166,7 @@ async def load_settings(
         agent_vals = _extract_agent_settings(settings, agent_settings_schema)
 
         settings_with_token_data = GETSettingsModel(
-            **settings.model_dump(exclude={'secrets_store', 'agent_settings'}),
+            **settings.model_dump(exclude={'secrets_store', 'raw_agent_settings'}),
             llm_api_key_set=settings.llm_api_key_is_set,
             search_api_key_set=settings.search_api_key is not None
             and bool(settings.search_api_key),

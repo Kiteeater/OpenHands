@@ -114,7 +114,7 @@ async def auto_generate_title(
             # Get LLM config from user settings
             try:
                 if settings:
-                    agent_settings = settings.to_agent_settings()
+                    agent_settings = settings.agent_settings
                     settings_base_url = agent_settings.llm.base_url
                     effective_base_url = get_effective_llm_base_url(
                         agent_settings.llm.model,

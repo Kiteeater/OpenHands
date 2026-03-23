@@ -356,7 +356,7 @@ class LiteLlmManager:
                 db_key = None
                 legacy_settings = user_settings.to_settings() if user_settings else None
                 legacy_llm_base_url = (
-                    legacy_settings.to_agent_settings().llm.base_url
+                    legacy_settings.agent_settings.llm.base_url
                     if legacy_settings
                     else None
                 )

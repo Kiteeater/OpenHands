@@ -725,7 +725,7 @@ async def get_prompt(
         # placeholder for error handling
         raise ValueError('Settings not found')
 
-    agent_settings = settings.to_agent_settings()
+    agent_settings = settings.agent_settings
     settings_base_url = agent_settings.llm.base_url
     effective_base_url = get_effective_llm_base_url(
         agent_settings.llm.model,

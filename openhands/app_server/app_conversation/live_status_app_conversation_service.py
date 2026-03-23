@@ -84,7 +84,6 @@ from openhands.app_server.utils.llm_metadata import (
     get_llm_metadata,
     should_set_litellm_extra_body,
 )
-from openhands.core.config.mcp_config import MCPConfig
 from openhands.integrations.provider import PROVIDER_TOKEN_TYPE, ProviderType
 from openhands.integrations.service_types import SuggestedTask
 from openhands.sdk import Agent, AgentContext, LocalWorkspace
@@ -376,7 +375,7 @@ class LiveStatusAppConversationService(AppConversationServiceBase):
 
             # Set security analyzer from settings
             user = await self.user_context.get_user_info()
-            verification_settings = user.to_agent_settings().verification
+            verification_settings = user.agent_settings.verification
             await self._set_security_analyzer_from_settings(
                 agent_server_url,
                 sandbox.session_api_key,
@@ -885,7 +884,7 @@ class LiveStatusAppConversationService(AppConversationServiceBase):
         self, user: UserInfo, llm_model: str | None
     ) -> AgentSettings:
         """Resolve SDK ``AgentSettings`` for this request."""
-        settings = user.to_agent_settings()
+        settings = user.agent_settings
         if llm_model is not None:
             settings = settings.model_copy(
                 update={
@@ -1052,28 +1051,72 @@ class LiveStatusAppConversationService(AppConversationServiceBase):
         self, mcp_servers: dict[str, Any], user: UserInfo
     ) -> None:
         """Merge custom MCP configuration from canonical SDK agent settings."""
-        user_mcp_config = user.to_agent_settings().mcp_config
-        if not user_mcp_config:
+        sdk_mcp_config = user.agent_settings.mcp_config
+        if not sdk_mcp_config:
             return
 
         try:
-            typed_mcp_config = MCPConfig.model_validate(user_mcp_config)
-            sse_servers = typed_mcp_config.sse_servers
-            shttp_servers = typed_mcp_config.shttp_servers
-            stdio_servers = typed_mcp_config.stdio_servers
-            sse_count = len(sse_servers)
-            shttp_count = len(shttp_servers)
-            stdio_count = len(stdio_servers)
+            raw_mcp_config = (
+                sdk_mcp_config.model_dump(exclude_none=True, exclude_defaults=True)
+                if hasattr(sdk_mcp_config, 'model_dump')
+                else sdk_mcp_config
+            )
+            if not isinstance(raw_mcp_config, dict):
+                raise TypeError('mcp_config must serialize to a dict')
+
+            raw_mcp_servers = raw_mcp_config.get('mcpServers', {})
+            if not isinstance(raw_mcp_servers, dict):
+                raise TypeError('mcpServers must be a dict')
+
+            sse_count = 0
+            shttp_count = 0
+            stdio_count = 0
+
+            for server_name, server_config in raw_mcp_servers.items():
+                if not isinstance(server_config, dict):
+                    raise TypeError(f'MCP server {server_name} must be a dict')
+
+                url = server_config.get('url')
+                if url:
+                    transport = server_config.get('transport')
+                    merged_server: dict[str, Any] = {
+                        'url': url,
+                        'transport': 'sse' if transport == 'sse' else 'streamable-http',
+                    }
+                    headers = dict(server_config.get('headers') or {})
+                    auth = server_config.get('auth')
+                    if (
+                        isinstance(auth, str)
+                        and auth != 'oauth'
+                        and 'Authorization' not in headers
+                    ):
+                        headers['Authorization'] = f'Bearer {auth}'
+                    if headers:
+                        merged_server['headers'] = headers
+                    if (
+                        merged_server['transport'] == 'streamable-http'
+                        and server_config.get('timeout') is not None
+                    ):
+                        merged_server['timeout'] = server_config['timeout']
+                    mcp_servers[server_name] = merged_server
+                    if merged_server['transport'] == 'sse':
+                        sse_count += 1
+                    else:
+                        shttp_count += 1
+                    continue
+
+                merged_server = {'command': server_config['command']}
+                if server_config.get('args'):
+                    merged_server['args'] = server_config['args']
+                if server_config.get('env'):
+                    merged_server['env'] = server_config['env']
+                mcp_servers[server_name] = merged_server
+                stdio_count += 1
 
             _logger.info(
                 f'Loading custom MCP config from user settings: '
                 f'{sse_count} SSE, {shttp_count} SHTTP, {stdio_count} STDIO servers'
             )
-
-            self._add_custom_sse_servers(mcp_servers, sse_servers)
-            self._add_custom_shttp_servers(mcp_servers, shttp_servers)
-            self._add_custom_stdio_servers(mcp_servers, stdio_servers)
-
             _logger.info(
                 f'Successfully merged custom MCP config: added {sse_count} SSE, '
                 f'{shttp_count} SHTTP, and {stdio_count} STDIO servers'
@@ -1437,7 +1480,7 @@ class LiveStatusAppConversationService(AppConversationServiceBase):
                 for p in plugins
             ]
 
-        verification_settings = user.to_agent_settings().verification
+        verification_settings = user.agent_settings.verification
 
         # Create and return the final request
         return StartConversationRequest(

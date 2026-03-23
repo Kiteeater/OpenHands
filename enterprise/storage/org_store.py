@@ -77,7 +77,8 @@ class OrgStore:
         settings.set_agent_setting(
             'max_iterations', getattr(org, 'default_max_iterations', None)
         )
-        settings.set_agent_setting('mcp_config', getattr(org, 'mcp_config', None))
+        if settings.get_agent_setting('mcp_config') is None:
+            settings.set_agent_setting('mcp_config', getattr(org, 'mcp_config', None))
         return OrgStore.org_scoped_agent_settings(
             settings.normalized_agent_settings(strip_secret_values=True)
         )
@@ -251,7 +252,10 @@ class OrgStore:
 
     @staticmethod
     def get_kwargs_from_settings(settings: Settings):
-        agent_settings = settings.to_agent_settings()
+        agent_settings = settings.agent_settings
+        normalized_agent_settings = settings.normalized_agent_settings(
+            strip_secret_values=True
+        )
         return {
             'agent': agent_settings.agent,
             'default_max_iterations': settings.get_agent_setting('max_iterations'),
@@ -289,15 +293,18 @@ class OrgStore:
                 settings, 'sandbox_grouping_strategy', None
             ),
             'agent_settings': OrgStore.org_scoped_agent_settings(
-                settings.normalized_agent_settings(strip_secret_values=True)
+                normalized_agent_settings
             ),
-            'mcp_config': agent_settings.mcp_config,
+            'mcp_config': normalized_agent_settings.get('mcp_config'),
         }
 
     @staticmethod
     def get_kwargs_from_user_settings(user_settings: UserSettings):
         settings = user_settings.to_settings()
-        agent_settings = settings.to_agent_settings()
+        agent_settings = settings.agent_settings
+        normalized_agent_settings = settings.normalized_agent_settings(
+            strip_secret_values=True
+        )
         return {
             'agent': agent_settings.agent,
             'default_max_iterations': settings.get_agent_setting('max_iterations'),
@@ -313,9 +320,9 @@ class OrgStore:
             'sandbox_runtime_container_image': user_settings.sandbox_runtime_container_image,
             'org_version': user_settings.user_version,
             'agent_settings': OrgStore.org_scoped_agent_settings(
-                settings.normalized_agent_settings(strip_secret_values=True)
+                normalized_agent_settings
             ),
-            'mcp_config': agent_settings.mcp_config,
+            'mcp_config': normalized_agent_settings.get('mcp_config'),
             'search_api_key': user_settings.search_api_key,
             'sandbox_api_key': user_settings.sandbox_api_key,
             'max_budget_per_task': user_settings.max_budget_per_task,

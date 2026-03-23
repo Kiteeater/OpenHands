@@ -1,5 +1,6 @@
 """Test MCP settings merging functionality."""
 
+import os
 from unittest.mock import patch
 
 import pytest
@@ -12,11 +13,14 @@ from openhands.core.config.mcp_config import (
 from openhands.storage.data_models.settings import Settings
 
 
+@pytest.fixture(autouse=True)
+def allow_short_context_windows():
+    with patch.dict(os.environ, {'ALLOW_SHORT_CONTEXT_WINDOWS': 'true'}, clear=False):
+        yield
+
+
 def _mcp_config(settings: Settings) -> MCPConfig | None:
-    raw_mcp_config = settings.get_agent_setting('mcp_config')
-    if raw_mcp_config is None:
-        return None
-    return MCPConfig.model_validate(raw_mcp_config)
+    return settings.to_legacy_mcp_config()
 
 
 @pytest.mark.asyncio

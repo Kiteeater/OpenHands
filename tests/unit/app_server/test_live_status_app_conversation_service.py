@@ -5,6 +5,7 @@ import json
 import os
 import zipfile
 from datetime import datetime
+from types import SimpleNamespace
 from unittest.mock import ANY, AsyncMock, Mock, patch
 from uuid import uuid4
 
@@ -46,6 +47,62 @@ from openhands.sdk.workspace.remote.async_remote_workspace import AsyncRemoteWor
 from openhands.server.types import AppMode
 from openhands.storage.data_models.conversation_metadata import ConversationTrigger
 from openhands.storage.data_models.settings import SandboxGroupingStrategy, Settings
+
+
+def _build_test_user_agent_settings(user: SimpleNamespace) -> AgentSettings:
+    agent_vals = dict(getattr(user, 'raw_agent_settings', {}))
+    model = getattr(user, 'llm_model', '') or ''
+    agent_vals.setdefault('llm.model', model)
+
+    llm_api_key = getattr(user, 'llm_api_key', None)
+    if llm_api_key:
+        agent_vals.setdefault('llm.api_key', llm_api_key)
+
+    mcp_config = getattr(user, 'mcp_config', None)
+    if mcp_config and 'mcp_config' not in agent_vals:
+        agent_vals['mcp_config'] = mcp_config.model_dump(mode='python')
+
+    llm_base_url = getattr(user, 'llm_base_url', None)
+    if (
+        llm_base_url
+        and 'llm.base_url' not in agent_vals
+        and not model.startswith('openhands/')
+    ):
+        agent_vals['llm.base_url'] = llm_base_url
+
+    return Settings(agent_settings=agent_vals).agent_settings
+
+
+class _TestUserInfo(SimpleNamespace):
+    @property
+    def agent_settings(self) -> AgentSettings:
+        override = getattr(self, '_agent_settings_override', None)
+        if override is not None:
+            return override
+        return _build_test_user_agent_settings(self)
+
+    @agent_settings.setter
+    def agent_settings(self, value):
+        self.raw_agent_settings = value
+
+    @property
+    def raw_agent_settings(self) -> dict:
+        return getattr(self, '_raw_agent_settings', {})
+
+    @raw_agent_settings.setter
+    def raw_agent_settings(self, value):
+        object.__setattr__(self, '_raw_agent_settings', value or {})
+
+    def to_legacy_mcp_config(self):
+        agent_vals = dict(self.raw_agent_settings)
+        mcp_config = getattr(self, 'mcp_config', None)
+        if mcp_config and 'mcp_config' not in agent_vals:
+            agent_vals['mcp_config'] = mcp_config.model_dump(mode='python')
+        return Settings(agent_settings=agent_vals).to_legacy_mcp_config()
+
+    def to_agent_settings(self) -> AgentSettings:
+        return self.agent_settings
+
 
 # Env var used by openhands SDK LLM to skip context-window validation (e.g. for gpt-4 in tests)
 _ALLOW_SHORT_CONTEXT_WINDOWS = 'ALLOW_SHORT_CONTEXT_WINDOWS'
@@ -107,21 +164,17 @@ class TestLiveStatusAppConversationService:
         )
 
         # Mock user info
-        self.mock_user = Mock()
-        self.mock_user.id = 'test_user_123'
-        self.mock_user.llm_model = 'gpt-4'
-        self.mock_user.llm_base_url = 'https://api.openai.com/v1'
-        self.mock_user.llm_api_key = 'test_api_key'
-        # Use ADD_TO_ANY for tests to maintain old behavior
-        self.mock_user.sandbox_grouping_strategy = SandboxGroupingStrategy.ADD_TO_ANY
-        self.mock_user.confirmation_mode = False
-        self.mock_user.search_api_key = None  # Default to None
-        self.mock_user.condenser_max_size = None  # Default to None
-        self.mock_user.llm_base_url = 'https://api.openai.com/v1'
-        self.mock_user.mcp_config = None  # Default to None to avoid error handling path
-        self.mock_user.agent_settings = {}
-        self.mock_user.to_agent_settings = Mock(
-            side_effect=self._mock_user_to_agent_settings
+        self.mock_user = _TestUserInfo(
+            id='test_user_123',
+            llm_model='gpt-4',
+            llm_base_url='https://api.openai.com/v1',
+            llm_api_key='test_api_key',
+            sandbox_grouping_strategy=SandboxGroupingStrategy.ADD_TO_ANY,
+            confirmation_mode=False,
+            search_api_key=None,
+            condenser_max_size=None,
+            mcp_config=None,
+            agent_settings={},
         )
 
         # Mock sandbox
@@ -132,24 +185,6 @@ class TestLiveStatusAppConversationService:
         # Default mock for hooks loading - returns None (no hooks found)
         # Tests that specifically test hooks loading can override this mock
         self.service._load_hooks_from_workspace = AsyncMock(return_value=None)
-
-    def _mock_user_to_agent_settings(self) -> AgentSettings:
-        agent_vals = dict(self.mock_user.agent_settings)
-        model = self.mock_user.llm_model or ''
-        agent_vals.setdefault('llm.model', model)
-        if self.mock_user.llm_api_key:
-            agent_vals.setdefault('llm.api_key', self.mock_user.llm_api_key)
-        if self.mock_user.mcp_config and 'mcp_config' not in agent_vals:
-            agent_vals['mcp_config'] = self.mock_user.mcp_config.model_dump(
-                mode='python'
-            )
-        if (
-            self.mock_user.llm_base_url
-            and 'llm.base_url' not in agent_vals
-            and not model.startswith('openhands/')
-        ):
-            agent_vals['llm.base_url'] = self.mock_user.llm_base_url
-        return Settings(agent_settings=agent_vals).to_agent_settings()
 
     def test_apply_suggested_task_sets_prompt_and_trigger(self):
         """Test suggested task prompts populate initial message and trigger."""
@@ -1798,9 +1833,11 @@ class TestLiveStatusAppConversationService:
     async def test_configure_llm_and_mcp_custom_config_error_handling(self):
         """Test _configure_llm_and_mcp handles invalid custom MCP config gracefully."""
         # Arrange
-        bad_agent_settings = Mock()
-        bad_agent_settings.mcp_config = Mock()
-        self.mock_user.to_agent_settings = Mock(return_value=bad_agent_settings)
+        invalid_mcp_config = Mock()
+        invalid_mcp_config.model_dump.return_value = 'not-a-dict'
+        self.mock_user._agent_settings_override = SimpleNamespace(
+            mcp_config=invalid_mcp_config
+        )
         self.service._configure_llm = Mock(
             return_value=LLM.model_validate({'model': 'gpt-4', 'usage_id': 'agent'})
         )
@@ -2300,43 +2337,23 @@ class TestPluginHandling:
         )
 
         # Mock user info
-        self.mock_user = Mock()
-        self.mock_user.id = 'test_user_123'
-        self.mock_user.llm_model = 'gpt-4'
-        self.mock_user.llm_base_url = 'https://api.openai.com/v1'
-        self.mock_user.llm_api_key = 'test_api_key'
-        self.mock_user.confirmation_mode = False
-        self.mock_user.search_api_key = None
-        self.mock_user.condenser_max_size = None
-        self.mock_user.mcp_config = None
-        self.mock_user.security_analyzer = None
-        self.mock_user.agent_settings = {}
-        self.mock_user.to_agent_settings = Mock(
-            side_effect=self._mock_user_to_agent_settings
+        self.mock_user = _TestUserInfo(
+            id='test_user_123',
+            llm_model='gpt-4',
+            llm_base_url='https://api.openai.com/v1',
+            llm_api_key='test_api_key',
+            confirmation_mode=False,
+            search_api_key=None,
+            condenser_max_size=None,
+            mcp_config=None,
+            security_analyzer=None,
+            agent_settings={},
         )
 
         # Mock sandbox
         self.mock_sandbox = Mock(spec=SandboxInfo)
         self.mock_sandbox.id = uuid4()
         self.mock_sandbox.status = SandboxStatus.RUNNING
-
-    def _mock_user_to_agent_settings(self) -> AgentSettings:
-        agent_vals = dict(self.mock_user.agent_settings)
-        model = self.mock_user.llm_model or ''
-        agent_vals.setdefault('llm.model', model)
-        if self.mock_user.llm_api_key:
-            agent_vals.setdefault('llm.api_key', self.mock_user.llm_api_key)
-        if self.mock_user.mcp_config and 'mcp_config' not in agent_vals:
-            agent_vals['mcp_config'] = self.mock_user.mcp_config.model_dump(
-                mode='python'
-            )
-        if (
-            self.mock_user.llm_base_url
-            and 'llm.base_url' not in agent_vals
-            and not model.startswith('openhands/')
-        ):
-            agent_vals['llm.base_url'] = self.mock_user.llm_base_url
-        return Settings(agent_settings=agent_vals).to_agent_settings()
 
     def test_construct_initial_message_with_plugin_params_no_plugins(self):
         """Test _construct_initial_message_with_plugin_params with no plugins returns original message."""

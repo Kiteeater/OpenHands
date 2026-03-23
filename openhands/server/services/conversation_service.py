@@ -105,7 +105,7 @@ async def start_conversation(
     session_init_args: dict[str, Any] = {}
     if settings:
         session_init_args = settings.model_dump()
-        agent_settings = settings.to_agent_settings()
+        agent_settings = settings.agent_settings
         model_name = agent_settings.llm.model
         llm_api_key = agent_settings.llm.api_key
         is_bedrock_model = model_name.startswith('bedrock/')

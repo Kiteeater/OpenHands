@@ -4,6 +4,7 @@ from unittest.mock import patch
 from pydantic import SecretStr
 
 from openhands.core.config.llm_config import LLMConfig
+from openhands.core.config.mcp_config import MCPConfig as LegacyMCPConfig
 from openhands.core.config.openhands_config import OpenHandsConfig
 from openhands.core.config.sandbox_config import SandboxConfig
 from openhands.core.config.security_config import SecurityConfig
@@ -16,7 +17,7 @@ def test_settings_from_config():
         default_agent='test-agent',
         max_iterations=100,
         security=SecurityConfig(
-            security_analyzer='test-analyzer',
+            security_analyzer='llm',
             confirmation_mode=True,
         ),
         llms={
@@ -39,10 +40,7 @@ def test_settings_from_config():
         assert settings.language == 'en'
         assert settings.get_agent_setting('agent') == 'test-agent'
         assert settings.get_agent_setting('max_iterations') == 100
-        assert (
-            settings.get_agent_setting('verification.security_analyzer')
-            == 'test-analyzer'
-        )
+        assert settings.get_agent_setting('verification.security_analyzer') == 'llm'
         assert settings.get_agent_setting('verification.confirmation_mode') is True
         assert settings.get_agent_setting('llm.model') == 'test-model'
         assert (
@@ -60,7 +58,7 @@ def test_settings_from_config_no_api_key():
         default_agent='test-agent',
         max_iterations=100,
         security=SecurityConfig(
-            security_analyzer='test-analyzer',
+            security_analyzer='llm',
             confirmation_mode=True,
         ),
         llms={
@@ -84,7 +82,7 @@ def test_settings_handles_sensitive_data():
         language='en',
         agent='test-agent',
         max_iterations=100,
-        security_analyzer='test-analyzer',
+        security_analyzer='llm',
         confirmation_mode=True,
         llm_model='test-model',
         llm_api_key='test-key',
@@ -100,6 +98,7 @@ def test_settings_handles_sensitive_data():
 def test_settings_preserve_agent_settings():
     settings = Settings(
         agent_settings={
+            'llm.model': 'test-model',
             'llm.api_key': 'test-key',
             'verification.critic_enabled': True,
             'verification.critic_mode': 'all_actions',
@@ -111,8 +110,9 @@ def test_settings_preserve_agent_settings():
         settings.get_secret_agent_setting('llm.api_key').get_secret_value()
         == 'test-key'
     )
-    assert settings.agent_settings == {
+    assert settings.raw_agent_settings == {
         'schema_version': 1,
+        'llm.model': 'test-model',
         'llm.api_key': 'test-key',
         'verification.critic_enabled': True,
         'verification.critic_mode': 'all_actions',
@@ -142,6 +142,60 @@ def test_settings_to_agent_settings_uses_agent_vals():
     assert agent_settings.condenser.max_size == 88
     assert agent_settings.verification.critic_enabled is True
     assert agent_settings.verification.critic_mode == 'all_actions'
+
+
+def test_settings_agent_settings_keeps_sdk_mcp_shape_canonical():
+    settings = Settings(
+        agent_settings={
+            'llm.model': 'sdk-model',
+            'mcp_config': {
+                'sse_servers': [{'url': 'https://example.com/sse'}],
+            },
+        },
+    )
+
+    assert settings.raw_agent_settings['mcp_config'] == {
+        'mcpServers': {'sse_0': {'transport': 'sse', 'url': 'https://example.com/sse'}}
+    }
+    assert settings.agent_settings_values()['mcp_config'] == {
+        'mcpServers': {'sse_0': {'transport': 'sse', 'url': 'https://example.com/sse'}}
+    }
+    assert settings.to_legacy_mcp_config() == LegacyMCPConfig.model_validate(
+        {'sse_servers': [{'url': 'https://example.com/sse'}]}
+    )
+
+
+def test_settings_set_agent_setting_keeps_sdk_mcp_shape_for_persistence():
+    settings = Settings(agent_settings={'llm.model': 'sdk-model'})
+
+    settings.set_agent_setting(
+        'mcp_config',
+        {
+            'mcpServers': {
+                'custom': {'transport': 'http', 'url': 'https://example.com/mcp'}
+            }
+        },
+    )
+
+    assert settings.raw_agent_settings['mcp_config'] == {
+        'mcpServers': {
+            'custom': {
+                'transport': 'http',
+                'url': 'https://example.com/mcp',
+            }
+        }
+    }
+    assert settings.agent_settings_values()['mcp_config'] == {
+        'mcpServers': {
+            'custom': {
+                'transport': 'http',
+                'url': 'https://example.com/mcp',
+            }
+        }
+    }
+    assert settings.to_legacy_mcp_config() == LegacyMCPConfig.model_validate(
+        {'shttp_servers': [{'url': 'https://example.com/mcp', 'timeout': 60}]}
+    )
 
 
 def test_settings_no_pydantic_frozen_field_warning():

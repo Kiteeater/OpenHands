@@ -65,7 +65,11 @@ class MockUserAuth(UserAuth):
 def test_client():
     # Create a test client
     with (
-        patch.dict(os.environ, {'SESSION_API_KEY': ''}, clear=False),
+        patch.dict(
+            os.environ,
+            {'SESSION_API_KEY': '', 'ALLOW_SHORT_CONTEXT_WINDOWS': 'true'},
+            clear=False,
+        ),
         patch('openhands.server.dependencies._SESSION_API_KEY', None),
         patch(
             'openhands.server.user_auth.user_auth.UserAuth.get_instance',

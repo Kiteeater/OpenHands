@@ -1,3 +1,4 @@
+import os
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -11,6 +12,12 @@ from openhands.storage.settings.file_settings_store import FileSettingsStore
 @pytest.fixture
 def mock_file_store():
     return MagicMock(spec=FileStore)
+
+
+@pytest.fixture(autouse=True)
+def allow_short_context_windows():
+    with patch.dict(os.environ, {'ALLOW_SHORT_CONTEXT_WINDOWS': 'true'}, clear=False):
+        yield
 
 
 @pytest.fixture
@@ -35,7 +42,7 @@ async def test_store_and_load_data(file_settings_store):
         language='python',
         agent='test-agent',
         max_iterations=100,
-        security_analyzer='default',
+        security_analyzer='llm',
         confirmation_mode=True,
         llm_model='test-model',
         llm_api_key='test-key',

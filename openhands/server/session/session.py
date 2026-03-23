@@ -20,7 +20,7 @@ from openhands.core.config.condenser_config import (
     ConversationWindowCondenserConfig,
     LLMSummarizingCondenserConfig,
 )
-from openhands.core.config.mcp_config import MCPConfig, OpenHandsMCPConfigImpl
+from openhands.core.config.mcp_config import OpenHandsMCPConfigImpl
 from openhands.core.exceptions import MicroagentValidationError
 from openhands.core.logger import OpenHandsLoggerAdapter
 from openhands.core.schema import AgentState
@@ -140,7 +140,7 @@ class WebSession:
             AgentStateChangedObservation('', AgentState.LOADING),
             EventSource.ENVIRONMENT,
         )
-        agent_settings = settings.to_agent_settings()
+        agent_settings = settings.agent_settings
         agent_cls = agent_settings.agent or self.config.default_agent
         verification_settings = agent_settings.verification
         self.config.security.confirmation_mode = verification_settings.confirmation_mode
@@ -164,7 +164,8 @@ class WebSession:
         if git_user_email is not None:
             self.config.git_user_email = git_user_email
         max_iterations = (
-            settings.agent_settings.get('max_iterations') or self.config.max_iterations
+            settings.raw_agent_settings.get('max_iterations')
+            or self.config.max_iterations
         )
 
         # Prioritize settings over config for max_budget_per_task
@@ -183,11 +184,10 @@ class WebSession:
             f'MCP configuration before setup - self.config.mcp_config: {self.config.mcp}'
         )
 
-        mcp_config = agent_settings.mcp_config
-        if mcp_config:
-            typed_mcp_config = MCPConfig.model_validate(mcp_config)
-            self.config.mcp = self.config.mcp.merge(typed_mcp_config)
-            self.logger.debug(f'Merged custom MCP Config: {typed_mcp_config}')
+        custom_mcp_config = settings.to_legacy_mcp_config()
+        if custom_mcp_config:
+            self.config.mcp = self.config.mcp.merge(custom_mcp_config)
+            self.logger.debug(f'Merged custom MCP Config: {custom_mcp_config}')
 
         # Add OpenHands' MCP server by default
         (
