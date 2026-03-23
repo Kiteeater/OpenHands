@@ -53,14 +53,26 @@ describe("LoginCTA", () => {
     const user = userEvent.setup();
     renderWithRouter();
 
-    const learnMoreButton = screen.getByRole("button", {
+    const learnMoreLink = screen.getByRole("link", {
       name: "CTA$LEARN_MORE",
     });
-    await user.click(learnMoreButton);
+    await user.click(learnMoreLink);
 
     expect(mockTrackSaasSelfhostedInquiry).toHaveBeenCalledWith({
       location: "login_page",
     });
     expect(screen.getByTestId("information-request-page")).toBeInTheDocument();
+  });
+
+  it("should render Learn More as a link for Open in New Tab support", () => {
+    renderWithRouter();
+
+    const learnMoreLink = screen.getByRole("link", {
+      name: "CTA$LEARN_MORE",
+    });
+    expect(learnMoreLink).toHaveAttribute(
+      "href",
+      "/onboarding/information-request",
+    );
   });
 });

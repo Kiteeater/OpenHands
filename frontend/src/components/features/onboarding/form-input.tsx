@@ -1,4 +1,5 @@
 import { isValidEmail } from "#/utils/input-validation";
+import { cn } from "#/utils/utils";
 
 interface FormInputProps {
   id: string;
@@ -27,11 +28,12 @@ export function FormInput({
   const isEmailInvalid =
     type === "email" && !!value.trim() && !isValidEmail(value.trim());
   const hasError = showError && ((required && !value.trim()) || isEmailInvalid);
-  const inputClassName = `w-full min-h-10 rounded border bg-[#050505] px-3 py-2 text-sm leading-5 text-white placeholder:text-[#8C8C8C] placeholder:leading-5 focus:outline-none transition-colors ${
+  const inputClassName = cn(
+    "w-full min-h-10 rounded border bg-[#050505] px-3 py-2 text-sm leading-5 text-white placeholder:text-[#8C8C8C] placeholder:leading-5 focus:outline-none transition-colors",
     hasError
       ? "border-red-500 focus:border-red-500"
-      : "border-[#242424] focus:border-white"
-  }`;
+      : "border-[#242424] focus:border-white",
+  );
 
   return (
     <div className="flex flex-col gap-1.5 w-full">
@@ -53,7 +55,7 @@ export function FormInput({
           aria-required={required}
           aria-invalid={hasError}
           aria-label={label}
-          className={`${inputClassName} h-auto resize-none`}
+          className={cn(inputClassName, "h-auto resize-none")}
         />
       ) : (
         <input

@@ -4,7 +4,7 @@ import { useNavigate } from "react-router";
 import { I18nKey } from "#/i18n/declaration";
 import { useTracking } from "#/hooks/use-tracking";
 import { Card } from "#/ui/card";
-import { Text } from "#/ui/typography";
+import { Typography } from "#/ui/typography";
 import { isValidEmail } from "#/utils/input-validation";
 import { FormInput } from "./form-input";
 import OpenHandsLogoWhite from "#/assets/branding/openhands-logo-white.svg?react";
@@ -103,8 +103,12 @@ export function InformationRequestForm({
       <div className="w-full flex flex-col items-center gap-4">
         <OpenHandsLogoWhite width={56} height={56} />
         <div className="text-center flex flex-col gap-2">
-          <h1 className="text-2xl font-semibold text-white">{title}</h1>
-          <Text className="text-[#8C8C8C] leading-5">{subtitle}</Text>
+          <Typography.H1 className="text-2xl font-semibold">
+            {title}
+          </Typography.H1>
+          <Typography.Text className="text-[#8C8C8C] leading-5">
+            {subtitle}
+          </Typography.Text>
         </div>
       </div>
 
@@ -198,15 +202,17 @@ export function InformationRequestForm({
         >
           <div className="w-10 h-10">
             {isSaas ? (
-              <CloudIcon className="w-10 h-10" />
+              <CloudIcon className="w-10 h-10 text-[#8C8C8C]" />
             ) : (
               <StackedIcon className="w-10 h-10" />
             )}
           </div>
-          <h3 className="text-xl font-semibold leading-7 text-[#FAFAFA]">
+          <Typography.H3 className="text-xl font-semibold leading-7 text-[#FAFAFA]">
             {cardTitle}
-          </h3>
-          <Text className="text-[#8C8C8C]">{cardDescription}</Text>
+          </Typography.H3>
+          <Typography.Text className="text-[#8C8C8C]">
+            {cardDescription}
+          </Typography.Text>
         </Card>
       </div>
     </div>

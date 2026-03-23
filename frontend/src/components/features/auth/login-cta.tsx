@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router";
+import { Link } from "react-router";
 import { Card } from "#/ui/card";
 import { CardTitle } from "#/ui/card-title";
 import { Typography } from "#/ui/typography";
@@ -10,12 +10,10 @@ import { useTracking } from "#/hooks/use-tracking";
 
 export function LoginCTA() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const { trackSaasSelfhostedInquiry } = useTracking();
 
   const handleLearnMoreClick = () => {
     trackSaasSelfhostedInquiry({ location: "login_page" });
-    navigate("/onboarding/information-request");
   };
 
   return (
@@ -47,8 +45,8 @@ export function LoginCTA() {
         </ul>
 
         <div className={cn("h-10 flex justify-start")}>
-          <button
-            type="button"
+          <Link
+            to="/onboarding/information-request"
             onClick={handleLearnMoreClick}
             className={cn(
               "inline-flex items-center justify-center",
@@ -59,7 +57,7 @@ export function LoginCTA() {
             )}
           >
             {t(I18nKey.CTA$LEARN_MORE)}
-          </button>
+          </Link>
         </div>
       </div>
     </Card>
