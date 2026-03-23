@@ -5,9 +5,12 @@ from io import StringIO
 from unittest.mock import patch
 
 import pytest
+from freezegun import freeze_time
 from server.logger import format_stack, setup_json_logger
 
 from openhands.core.logger import openhands_logger
+
+FROZEN_TIMESTAMP = '2024-01-15T10:30:00+00:00'
 
 
 @pytest.fixture
@@ -21,20 +24,31 @@ def log_output():
 
 
 class TestLogOutput:
+    @freeze_time(FROZEN_TIMESTAMP)
     def test_info(self, log_output):
         logger, string_io = log_output
 
         logger.info('Test message')
         output = json.loads(string_io.getvalue())
-        assert output == {'message': 'Test message', 'severity': 'INFO'}
+        assert output == {
+            'message': 'Test message',
+            'severity': 'INFO',
+            'timestamp': FROZEN_TIMESTAMP,
+        }
 
+    @freeze_time(FROZEN_TIMESTAMP)
     def test_error(self, log_output):
         logger, string_io = log_output
 
         logger.error('Test message')
         output = json.loads(string_io.getvalue())
-        assert output == {'message': 'Test message', 'severity': 'ERROR'}
+        assert output == {
+            'message': 'Test message',
+            'severity': 'ERROR',
+            'timestamp': FROZEN_TIMESTAMP,
+        }
 
+    @freeze_time(FROZEN_TIMESTAMP)
     def test_extra_fields(self, log_output):
         logger, string_io = log_output
 
@@ -44,6 +58,7 @@ class TestLogOutput:
             'key': '..val..',
             'message': 'Test message',
             'severity': 'INFO',
+            'timestamp': FROZEN_TIMESTAMP,
         }
 
     def test_format_stack(self):
@@ -257,6 +272,7 @@ class TestLogOutput:
             ]
             assert formatted == expected
 
+    @freeze_time(FROZEN_TIMESTAMP)
     def test_filtering(self):
         # Ensure that secret values are still filtered
         string_io = StringIO()
@@ -266,4 +282,8 @@ class TestLogOutput:
         ):
             openhands_logger.info('The secret key was supersecretvalue')
         output = json.loads(string_io.getvalue())
-        assert output == {'message': 'The secret key was ******', 'severity': 'INFO'}
+        assert output == {
+            'message': 'The secret key was ******',
+            'severity': 'INFO',
+            'timestamp': FROZEN_TIMESTAMP,
+        }
