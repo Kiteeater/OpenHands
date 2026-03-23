@@ -27,14 +27,14 @@ describe("useIsOnIntermediatePage", () => {
       expect(result.current).toBe(true);
     });
 
-    it("should return true when on /onboarding/new-account-form page", () => {
-      useLocationMock.mockReturnValue({ pathname: "/onboarding/new-account-form" });
+    it("should return true when on /onboarding page", () => {
+      useLocationMock.mockReturnValue({ pathname: "/onboarding" });
       const { result } = renderHook(() => useIsOnIntermediatePage());
       expect(result.current).toBe(true);
     });
 
-    it("should return true when on /onboarding/information-request page", () => {
-      useLocationMock.mockReturnValue({ pathname: "/onboarding/information-request" });
+    it("should return true when on /information-request page", () => {
+      useLocationMock.mockReturnValue({ pathname: "/information-request" });
       const { result } = renderHook(() => useIsOnIntermediatePage());
       expect(result.current).toBe(true);
     });

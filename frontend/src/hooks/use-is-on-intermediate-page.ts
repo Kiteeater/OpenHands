@@ -2,8 +2,8 @@ import { useLocation } from "react-router";
 
 const INTERMEDIATE_PAGE_PATHS = [
   "/accept-tos",
-  "/onboarding/new-account-form",
-  "/onboarding/information-request",
+  "/onboarding",
+  "/information-request",
 ];
 
 /**

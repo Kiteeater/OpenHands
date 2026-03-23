@@ -46,7 +46,7 @@ export function LoginCTA() {
 
         <div className={cn("h-10 flex justify-start")}>
           <Link
-            to="/onboarding/information-request"
+            to="/information-request"
             onClick={handleLearnMoreClick}
             className={cn(
               "inline-flex items-center justify-center",

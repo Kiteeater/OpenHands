@@ -24,7 +24,7 @@ describe("LoginCTA", () => {
         Component: LoginCTA,
       },
       {
-        path: "/onboarding/information-request",
+        path: "/information-request",
         Component: () => <div data-testid="information-request-page" />,
       },
     ]);
@@ -72,7 +72,7 @@ describe("LoginCTA", () => {
     });
     expect(learnMoreLink).toHaveAttribute(
       "href",
-      "/onboarding/information-request",
+      "/information-request",
     );
   });
 });
