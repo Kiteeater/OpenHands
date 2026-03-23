@@ -37,7 +37,7 @@ export function EnterpriseCard({
         type="button"
         onClick={onLearnMore}
         aria-label={`${learnMoreLabel} ${title}`}
-        className="mt-2 w-fit px-6 py-2.5 text-sm rounded-sm bg-[#050505] text-white border border-[#242424] hover:bg-white hover:text-black transition-colors"
+        className="mt-2 w-fit px-6 py-2.5 text-sm rounded-sm bg-[#050505] text-white border border-[#242424] hover:bg-white hover:text-black transition-colors cursor-pointer"
       >
         {learnMoreLabel}
       </button>

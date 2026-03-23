@@ -177,7 +177,7 @@ export function InformationRequestForm({
               type="button"
               onClick={onBack}
               aria-label={t(I18nKey.COMMON$BACK)}
-              className="flex-1 px-6 py-2.5 text-sm rounded bg-transparent text-white border border-[#242424] hover:bg-[#1a1a1a] transition-colors"
+              className="flex-1 px-6 py-2.5 text-sm rounded bg-transparent text-white border border-[#242424] hover:bg-[#1a1a1a] transition-colors cursor-pointer"
             >
               {t(I18nKey.COMMON$BACK)}
             </button>
@@ -185,7 +185,7 @@ export function InformationRequestForm({
               type="submit"
               disabled={isSubmitting}
               aria-label={t(I18nKey.ENTERPRISE$FORM_SUBMIT)}
-              className="flex-1 px-6 py-2.5 text-sm rounded bg-white text-black border border-white hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-6 py-2.5 text-sm rounded bg-white text-black border border-white hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               {isSubmitting
                 ? t(I18nKey.ENTERPRISE$FORM_SUBMITTING)

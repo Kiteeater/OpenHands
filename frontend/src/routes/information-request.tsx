@@ -1,9 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router";
 import { I18nKey } from "#/i18n/declaration";
 import { Typography } from "#/ui/typography";
-import { BrandButton } from "#/components/features/settings/brand-button";
 import {
   InformationRequestForm,
   RequestType,
@@ -16,7 +14,6 @@ import StackedIcon from "#/icons/stacked.svg?react";
 
 export default function InformationRequest() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [selectedRequestType, setSelectedRequestType] =
     useState<RequestType | null>(null);
   const [formData, setFormData] = useState<FormData>({
@@ -25,10 +22,6 @@ export default function InformationRequest() {
     email: "",
     message: "",
   });
-
-  const handleBack = () => {
-    navigate("/login");
-  };
 
   const handleLearnMore = (type: RequestType) => {
     setSelectedRequestType(type);
@@ -107,16 +100,14 @@ export default function InformationRequest() {
         />
       </div>
 
-      {/* Back Button */}
-      <BrandButton
-        type="button"
-        variant="secondary"
-        onClick={handleBack}
+      {/* Back Link */}
+      <a
+        href="/login"
         aria-label={t(I18nKey.COMMON$BACK)}
-        className="px-6 py-2.5 bg-[#050505] text-white border border-[#242424] hover:bg-white hover:text-black"
+        className="px-6 py-2.5 text-sm rounded-sm bg-[#050505] text-white border border-[#242424] hover:bg-white hover:text-black transition-colors"
       >
         {t(I18nKey.COMMON$BACK)}
-      </BrandButton>
+      </a>
     </div>
   );
 }

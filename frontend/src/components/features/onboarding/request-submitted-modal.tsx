@@ -26,7 +26,7 @@ export function RequestSubmittedModal({ onClose }: RequestSubmittedModalProps) {
             type="button"
             onClick={onClose}
             aria-label={t(I18nKey.MODAL$CLOSE_BUTTON_LABEL)}
-            className="absolute top-[17px] right-[17px] w-4 h-4 flex items-center justify-center opacity-70 hover:opacity-100 transition-opacity rounded-sm"
+            className="absolute top-[17px] right-[17px] w-4 h-4 flex items-center justify-center opacity-70 hover:opacity-100 transition-opacity rounded-sm cursor-pointer"
           >
             <CloseIcon className="w-4 h-4" />
           </button>
@@ -48,7 +48,7 @@ export function RequestSubmittedModal({ onClose }: RequestSubmittedModalProps) {
             type="button"
             onClick={onClose}
             aria-label={t(I18nKey.ENTERPRISE$DONE_BUTTON)}
-            className="px-4 py-2 text-sm font-medium bg-white text-black rounded hover:bg-gray-100 transition-colors"
+            className="px-4 py-2 text-sm font-medium bg-white text-black rounded hover:bg-gray-100 transition-colors cursor-pointer"
           >
             {t(I18nKey.ENTERPRISE$DONE_BUTTON)}
           </button>
