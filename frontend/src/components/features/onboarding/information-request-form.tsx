@@ -177,7 +177,7 @@ export function InformationRequestForm({
               type="button"
               onClick={onBack}
               aria-label={t(I18nKey.COMMON$BACK)}
-              className="flex-1 px-6 py-2.5 text-sm rounded bg-transparent text-white border border-[#242424] hover:bg-[#1a1a1a] transition-colors cursor-pointer"
+              className="flex-1 px-6 py-2.5 text-sm rounded bg-transparent text-white border border-[#242424] hover:bg-white transition-colors cursor-pointer hover:text-black"
             >
               {t(I18nKey.COMMON$BACK)}
             </button>
@@ -210,7 +210,7 @@ export function InformationRequestForm({
           <Typography.H3 className="text-xl font-semibold leading-7 text-[#FAFAFA]">
             {cardTitle}
           </Typography.H3>
-          <Typography.Text className="text-[#8C8C8C]">
+          <Typography.Text className="relative top-[0.5px] font-inter text-[#8C8C8C] font-400 text-14px leading-[22.75px] tracking-[0px]">
             {cardDescription}
           </Typography.Text>
         </Card>

@@ -11,6 +11,7 @@ import { EnterpriseCard } from "#/components/features/onboarding/enterprise-card
 import OpenHandsLogoWhite from "#/assets/branding/openhands-logo-white.svg?react";
 import CloudIcon from "#/icons/cloud-minimal.svg?react";
 import StackedIcon from "#/icons/stacked.svg?react";
+import { ModalBackdrop } from "#/components/shared/modals/modal-backdrop";
 
 export default function InformationRequest() {
   const { t } = useTranslation();
@@ -63,51 +64,53 @@ export default function InformationRequest() {
   }
 
   return (
-    <div
-      data-testid="information-request-page"
-      className="w-full max-w-4xl flex flex-col items-center gap-8 p-6"
-    >
-      {/* Logo */}
-      <OpenHandsLogoWhite width={56} height={56} />
-
-      {/* Header */}
-      <div className="text-center flex flex-col gap-3">
-        <Typography.H1 className="text-2xl font-bold">
-          {t(I18nKey.ENTERPRISE$GET_OPENHANDS_TITLE)}
-        </Typography.H1>
-        <Typography.Text className="text-[#8C8C8C] max-w-lg">
-          {t(I18nKey.ENTERPRISE$GET_OPENHANDS_SUBTITLE)}
-        </Typography.Text>
-      </div>
-
-      {/* Cards */}
-      <div className="w-full flex flex-col md:flex-row gap-4">
-        <EnterpriseCard
-          icon={<CloudIcon className="w-10 h-10 text-[#8C8C8C]" />}
-          title={t(I18nKey.ENTERPRISE$SAAS_TITLE)}
-          description={t(I18nKey.ENTERPRISE$SAAS_DESCRIPTION)}
-          features={saasFeatures}
-          onLearnMore={() => handleLearnMore("saas")}
-          learnMoreLabel={t(I18nKey.ENTERPRISE$LEARN_MORE)}
-        />
-        <EnterpriseCard
-          icon={<StackedIcon className="w-10 h-10" />}
-          title={t(I18nKey.ENTERPRISE$SELF_HOSTED_TITLE)}
-          description={t(I18nKey.ENTERPRISE$SELF_HOSTED_CARD_DESCRIPTION)}
-          features={selfHostedFeatures}
-          onLearnMore={() => handleLearnMore("self-hosted")}
-          learnMoreLabel={t(I18nKey.ENTERPRISE$LEARN_MORE)}
-        />
-      </div>
-
-      {/* Back Link */}
-      <a
-        href="/login"
-        aria-label={t(I18nKey.COMMON$BACK)}
-        className="px-6 py-2.5 text-sm rounded-sm bg-[#050505] text-white border border-[#242424] hover:bg-white hover:text-black transition-colors"
+    <ModalBackdrop>
+      <div
+        data-testid="information-request-page"
+        className="w-full max-w-4xl flex flex-col items-center gap-[16px] p-6"
       >
-        {t(I18nKey.COMMON$BACK)}
-      </a>
-    </div>
+        {/* Logo */}
+        <OpenHandsLogoWhite width={56} height={56} />
+
+        {/* Header */}
+        <div className="text-center flex flex-col gap-3">
+          <Typography.H1 className="text-2xl font-bold">
+            {t(I18nKey.ENTERPRISE$GET_OPENHANDS_TITLE)}
+          </Typography.H1>
+          <Typography.Text className="text-[#8C8C8C] max-w-lg">
+            {t(I18nKey.ENTERPRISE$GET_OPENHANDS_SUBTITLE)}
+          </Typography.Text>
+        </div>
+
+        {/* Cards */}
+        <div className="w-full flex flex-col md:flex-row gap-4">
+          <EnterpriseCard
+            icon={<CloudIcon className="w-10 h-10 text-[#8C8C8C]" />}
+            title={t(I18nKey.ENTERPRISE$SAAS_TITLE)}
+            description={t(I18nKey.ENTERPRISE$SAAS_DESCRIPTION)}
+            features={saasFeatures}
+            onLearnMore={() => handleLearnMore("saas")}
+            learnMoreLabel={t(I18nKey.ENTERPRISE$LEARN_MORE)}
+          />
+          <EnterpriseCard
+            icon={<StackedIcon className="w-10 h-10" />}
+            title={t(I18nKey.ENTERPRISE$SELF_HOSTED_TITLE)}
+            description={t(I18nKey.ENTERPRISE$SELF_HOSTED_CARD_DESCRIPTION)}
+            features={selfHostedFeatures}
+            onLearnMore={() => handleLearnMore("self-hosted")}
+            learnMoreLabel={t(I18nKey.ENTERPRISE$LEARN_MORE)}
+          />
+        </div>
+
+        {/* Back Link */}
+        <a
+          href="/login"
+          aria-label={t(I18nKey.COMMON$BACK)}
+          className="px-6 py-2.5 text-sm rounded-sm bg-[#050505] text-white border border-[#242424] hover:bg-white hover:text-black transition-colors"
+        >
+          {t(I18nKey.COMMON$BACK)}
+        </a>
+      </div>
+    </ModalBackdrop>
   );
 }
