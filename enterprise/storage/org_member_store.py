@@ -17,14 +17,6 @@ from storage.user_settings import UserSettings
 
 from openhands.storage.data_models.settings import Settings
 
-# Only these agent_settings keys are stored per member; org-wide settings live on Org.
-_MEMBER_SCOPED_AGENT_SETTINGS_KEYS = {
-    'schema_version',
-    'llm.model',
-    'llm.base_url',
-    'max_iterations',
-}
-
 
 class OrgMemberStore:
     """Store for managing organization-member relationships."""
@@ -157,20 +149,27 @@ class OrgMemberStore:
             return True
 
     @staticmethod
+    def get_agent_settings_from_org_member(org_member: OrgMember) -> dict:
+        settings = Settings(agent_settings=dict(org_member.agent_settings or {}))
+        for key, value in {
+            'llm.model': org_member.llm_model,
+            'llm.base_url': org_member.llm_base_url,
+            'max_iterations': org_member.max_iterations,
+        }.items():
+            if settings.get_agent_setting(key) is None and value is not None:
+                settings.set_agent_setting(key, value)
+        return settings.normalized_agent_settings(strip_secret_values=True)
+
+    @staticmethod
     def get_kwargs_from_settings(settings: Settings):
+        agent_settings = settings.agent_settings
         return {
             'llm_api_key': settings.get_secret_agent_setting('llm.api_key'),
-            'llm_model': settings.get_agent_setting('llm.model'),
+            'llm_model': agent_settings.llm.model,
             'llm_api_key_for_byor': settings.llm_api_key_for_byor,
-            'llm_base_url': settings.get_agent_setting('llm.base_url'),
+            'llm_base_url': agent_settings.llm.base_url,
             'max_iterations': settings.get_agent_setting('max_iterations'),
-            'agent_settings': {
-                key: value
-                for key, value in settings.normalized_agent_settings(
-                    strip_secret_values=True
-                ).items()
-                if key in _MEMBER_SCOPED_AGENT_SETTINGS_KEYS
-            },
+            'agent_settings': settings.normalized_agent_settings(strip_secret_values=True),
         }
 
     @staticmethod
@@ -183,13 +182,7 @@ class OrgMemberStore:
             'llm_api_key_for_byor': user_settings.llm_api_key_for_byor,
             'llm_base_url': agent_settings.llm.base_url,
             'max_iterations': settings.get_agent_setting('max_iterations'),
-            'agent_settings': {
-                key: value
-                for key, value in settings.normalized_agent_settings(
-                    strip_secret_values=True
-                ).items()
-                if key in _MEMBER_SCOPED_AGENT_SETTINGS_KEYS
-            },
+            'agent_settings': settings.normalized_agent_settings(strip_secret_values=True),
         }
 
     @staticmethod

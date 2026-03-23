@@ -36,9 +36,8 @@ def mock_config():
     return config
 
 
-def test_member_scoped_agent_settings_filters_effective_settings(mock_config):
-    store = SaasSettingsStore('test-user-id', mock_config)
-    effective_settings = Settings(
+def test_member_settings_persist_full_effective_agent_settings(mock_config):
+    settings = Settings(
         agent='CodeActAgent',
         llm_model='anthropic/claude-sonnet-4-5-20250929',
         llm_base_url='https://api.example.com',
@@ -49,13 +48,16 @@ def test_member_scoped_agent_settings_filters_effective_settings(mock_config):
         condenser_max_size=128,
     )
 
-    assert store._member_scoped_agent_settings(
-        effective_settings.normalized_agent_settings(strip_secret_values=True)
-    ) == {
+    assert settings.normalized_agent_settings(strip_secret_values=True) == {
         'schema_version': 1,
+        'agent': 'CodeActAgent',
         'llm.model': 'anthropic/claude-sonnet-4-5-20250929',
         'llm.base_url': 'https://api.example.com',
         'max_iterations': 42,
+        'verification.confirmation_mode': True,
+        'verification.security_analyzer': 'llm',
+        'condenser.enabled': False,
+        'condenser.max_size': 128,
     }
 
 

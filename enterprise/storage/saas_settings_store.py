@@ -18,6 +18,7 @@ from storage.encrypt_utils import encrypt_value
 from storage.lite_llm_manager import LiteLlmManager, get_openhands_cloud_key_alias
 from storage.org import Org
 from storage.org_member import OrgMember
+from storage.org_member_store import OrgMemberStore
 from storage.org_store import OrgStore
 from storage.user import User
 from storage.user_settings import UserSettings
@@ -27,14 +28,6 @@ from openhands.core.config.openhands_config import OpenHandsConfig
 from openhands.server.settings import Settings
 from openhands.storage.settings.settings_store import SettingsStore
 from openhands.utils.llm import is_openhands_model
-
-# Only these agent_settings keys are persisted on org_member; org-wide values live on Org.
-_MEMBER_SCOPED_AGENT_SETTINGS_KEYS = {
-    'schema_version',
-    'llm.model',
-    'llm.base_url',
-    'max_iterations',
-}
 
 
 @dataclass
@@ -76,14 +69,6 @@ class SaasSettingsStore(SettingsStore):
                     )
                 )
                 return result.scalars().first()
-
-    @staticmethod
-    def _member_scoped_agent_settings(agent_settings: dict) -> dict:
-        return {
-            key: value
-            for key, value in agent_settings.items()
-            if key in _MEMBER_SCOPED_AGENT_SETTINGS_KEYS
-        }
 
     async def _persist_agent_settings_async(
         self, org_id: uuid.UUID, agent_settings: dict
@@ -133,12 +118,8 @@ class SaasSettingsStore(SettingsStore):
             )
             return None
         org_agent_settings = OrgStore.get_agent_settings_from_org(org)
-        member_settings = Settings(agent_settings=dict(org_member.agent_settings or {}))
-        member_settings.set_agent_setting('llm.model', org_member.llm_model)
-        member_settings.set_agent_setting('llm.base_url', org_member.llm_base_url)
-        member_settings.set_agent_setting('max_iterations', org_member.max_iterations)
-        member_agent_settings = self._member_scoped_agent_settings(
-            member_settings.normalized_agent_settings(strip_secret_values=True)
+        member_agent_settings = OrgMemberStore.get_agent_settings_from_org_member(
+            org_member
         )
 
         kwargs = {
@@ -247,9 +228,7 @@ class SaasSettingsStore(SettingsStore):
             org_agent_settings = OrgStore.org_scoped_agent_settings(
                 normalized_agent_settings
             )
-            member_agent_settings = self._member_scoped_agent_settings(
-                normalized_agent_settings
-            )
+            member_agent_settings = normalized_agent_settings
 
             kwargs = item.model_dump(context={'expose_secrets': True})
             kwargs.pop('agent_settings', None)

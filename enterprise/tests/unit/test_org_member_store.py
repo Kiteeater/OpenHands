@@ -35,11 +35,45 @@ def test_get_kwargs_from_user_settings_uses_agent_settings_as_source_of_truth():
     assert kwargs['llm_model'] == 'anthropic/claude-sonnet-4-5-20250929'
     assert kwargs['llm_base_url'] == 'https://api.example.com'
     assert kwargs['max_iterations'] == 42
-    assert kwargs['agent_settings'] == {
+    assert kwargs['agent_settings'] | {
         'schema_version': 1,
+        'agent': 'CodeActAgent',
+        'verification.confirmation_mode': True,
+        'verification.security_analyzer': 'llm',
+        'condenser.enabled': False,
+        'condenser.max_size': 128,
         'llm.model': 'anthropic/claude-sonnet-4-5-20250929',
         'llm.base_url': 'https://api.example.com',
         'max_iterations': 42,
+    } == kwargs['agent_settings']
+
+
+def test_get_agent_settings_from_org_member_prefers_canonical_json_over_legacy_columns():
+    org_member = OrgMember(
+        org_id=uuid.uuid4(),
+        user_id=uuid.uuid4(),
+        role_id=1,
+        llm_api_key='legacy-secret',
+        llm_model='legacy-model',
+        llm_base_url='https://legacy.example.com',
+        max_iterations=9,
+        agent_settings={
+            'schema_version': 1,
+            'agent': 'CodeActAgent',
+            'llm.model': 'member-model',
+            'llm.base_url': 'https://member.example.com',
+            'max_iterations': 42,
+            'verification.confirmation_mode': True,
+        },
+    )
+
+    assert OrgMemberStore.get_agent_settings_from_org_member(org_member) == {
+        'schema_version': 1,
+        'agent': 'CodeActAgent',
+        'llm.model': 'member-model',
+        'llm.base_url': 'https://member.example.com',
+        'max_iterations': 42,
+        'verification.confirmation_mode': True,
     }
 
 

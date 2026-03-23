@@ -91,12 +91,6 @@ class UserStore:
             from storage.org_member_store import OrgMemberStore
 
             org_member_kwargs = OrgMemberStore.get_kwargs_from_settings(settings)
-            # Personal orgs should inherit org defaults rather than duplicating them
-            # on the owner membership.
-            org_member_kwargs['agent_settings'] = {}
-            org_member_kwargs.pop('llm_model', None)
-            org_member_kwargs.pop('llm_base_url', None)
-            org_member_kwargs.pop('max_iterations', None)
             org_member = OrgMember(
                 org_id=org.id,
                 user_id=user.id,
@@ -283,14 +277,11 @@ class UserStore:
             org_member_kwargs = OrgMemberStore.get_kwargs_from_user_settings(
                 decrypted_user_settings
             )
-
-            # if the user did not have custom settings in the old model,
-            # then use the org defaults by not setting org_member fields
             if not custom_settings:
-                org_member_kwargs['agent_settings'] = {}
-                org_member_kwargs.pop('llm_model', None)
-                org_member_kwargs.pop('llm_base_url', None)
-                org_member_kwargs.pop('max_iterations', None)
+                org_member_kwargs['agent_settings'] = OrgStore.get_agent_settings_from_org(org)
+                org_member_kwargs['llm_model'] = org.default_llm_model
+                org_member_kwargs['llm_base_url'] = org.default_llm_base_url
+                org_member_kwargs['max_iterations'] = org.default_max_iterations
 
             org_member = OrgMember(
                 org_id=org.id,
@@ -960,16 +951,11 @@ class UserStore:
         Returns:
             A new UserSettings object populated from the entities
         """
+        from storage.org_member_store import OrgMemberStore
         from storage.org_store import OrgStore
 
-        from openhands.storage.data_models.settings import Settings
-
-        member_settings = Settings(agent_settings=dict(org_member.agent_settings or {}))
-        member_settings.set_agent_setting('llm.model', org_member.llm_model)
-        member_settings.set_agent_setting('llm.base_url', org_member.llm_base_url)
-        member_settings.set_agent_setting('max_iterations', org_member.max_iterations)
-        member_agent_settings = member_settings.normalized_agent_settings(
-            strip_secret_values=True
+        member_agent_settings = OrgMemberStore.get_agent_settings_from_org_member(
+            org_member
         )
         agent_settings = {
             **OrgStore.get_agent_settings_from_org(org),
