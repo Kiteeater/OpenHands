@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { Card } from "#/ui/card";
 import { Typography } from "#/ui/typography";
 import { FeatureList } from "./feature-list";
@@ -33,14 +34,14 @@ export function EnterpriseCard({
         {description}
       </Typography.Text>
       <FeatureList features={features} />
-      <button
-        type="button"
+      <Link
+        to="/information-request"
         onClick={onLearnMore}
         aria-label={`${learnMoreLabel} ${title}`}
-        className="mt-2 w-fit px-6 py-2.5 text-sm rounded-sm bg-[#050505] text-white border border-[#242424] hover:bg-white hover:text-black transition-colors cursor-pointer"
+        className="mt-2 w-fit px-6 py-2.5 text-sm rounded-sm bg-[#050505] text-white border border-[#242424] hover:bg-white hover:text-black transition-colors"
       >
         {learnMoreLabel}
-      </button>
+      </Link>
     </Card>
   );
 }

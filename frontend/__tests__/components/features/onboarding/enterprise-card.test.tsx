@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { MemoryRouter } from "react-router";
 import { EnterpriseCard } from "#/components/features/onboarding/enterprise-card";
 
 describe("EnterpriseCard", () => {
@@ -9,62 +10,74 @@ describe("EnterpriseCard", () => {
     title: "Test Title",
     description: "Test description",
     features: ["Feature 1", "Feature 2"],
-    onLearnMore: vi.fn(),
     learnMoreLabel: "Learn More",
+    onLearnMore: vi.fn(),
   };
 
+  const renderWithRouter = (props = defaultProps) =>
+    render(
+      <MemoryRouter>
+        <EnterpriseCard {...props} />
+      </MemoryRouter>,
+    );
+
   it("should render the card with title", () => {
-    render(<EnterpriseCard {...defaultProps} />);
+    renderWithRouter();
 
     expect(screen.getByText("Test Title")).toBeInTheDocument();
   });
 
   it("should render the description", () => {
-    render(<EnterpriseCard {...defaultProps} />);
+    renderWithRouter();
 
     expect(screen.getByText("Test description")).toBeInTheDocument();
   });
 
   it("should render the icon", () => {
-    render(<EnterpriseCard {...defaultProps} />);
+    renderWithRouter();
 
     expect(screen.getByTestId("test-icon")).toBeInTheDocument();
   });
 
   it("should render the features", () => {
-    render(<EnterpriseCard {...defaultProps} />);
+    renderWithRouter();
 
     expect(screen.getByText("Feature 1")).toBeInTheDocument();
     expect(screen.getByText("Feature 2")).toBeInTheDocument();
   });
 
-  it("should render the learn more button with correct label", () => {
-    render(<EnterpriseCard {...defaultProps} />);
+  it("should render the learn more link with correct label", () => {
+    renderWithRouter();
 
-    const button = screen.getByRole("button", {
+    const link = screen.getByRole("link", {
       name: "Learn More Test Title",
     });
-    expect(button).toBeInTheDocument();
+    expect(link).toBeInTheDocument();
   });
 
-  it("should call onLearnMore when button is clicked", async () => {
+  it("should have correct href", () => {
+    renderWithRouter();
+
+    const link = screen.getByRole("link", { name: "Learn More Test Title" });
+    expect(link).toHaveAttribute("href", "/information-request");
+  });
+
+  it("should call onLearnMore when link is clicked", async () => {
     const mockOnLearnMore = vi.fn();
     const user = userEvent.setup();
 
-    render(<EnterpriseCard {...defaultProps} onLearnMore={mockOnLearnMore} />);
+    renderWithRouter({ ...defaultProps, onLearnMore: mockOnLearnMore });
 
-    const button = screen.getByRole("button", {
-      name: "Learn More Test Title",
-    });
-    await user.click(button);
+    const link = screen.getByRole("link", { name: "Learn More Test Title" });
+    await user.click(link);
 
     expect(mockOnLearnMore).toHaveBeenCalledTimes(1);
   });
 
-  it("should have correct aria-label on button", () => {
-    render(<EnterpriseCard {...defaultProps} />);
+  it("should have correct aria-label on link", () => {
+    renderWithRouter();
 
-    const button = screen.getByRole("button");
-    expect(button).toHaveAttribute("aria-label", "Learn More Test Title");
+    const link = screen.getByRole("link");
+    expect(link).toHaveAttribute("aria-label", "Learn More Test Title");
   });
 });

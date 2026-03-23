@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
 import { I18nKey } from "#/i18n/declaration";
 import { Typography } from "#/ui/typography";
 import {
@@ -141,13 +142,13 @@ export default function InformationRequest() {
         </div>
 
         {/* Back Link */}
-        <a
-          href="/login"
+        <Link
+          to="/login"
           aria-label={t(I18nKey.COMMON$BACK)}
           className="px-6 py-2.5 text-sm rounded-sm bg-[#050505] text-white border border-[#242424] hover:bg-white hover:text-black transition-colors"
         >
           {t(I18nKey.COMMON$BACK)}
-        </a>
+        </Link>
       </div>
     </main>
   );

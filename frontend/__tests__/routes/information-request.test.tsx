@@ -155,17 +155,17 @@ describe("InformationRequest", () => {
     expect(screen.getByText("ENTERPRISE$GET_OPENHANDS_TITLE")).toBeInTheDocument();
   });
 
-  it("should have accessible Learn More buttons with aria-label", () => {
+  it("should have accessible Learn More links with aria-label", () => {
     renderWithRouter();
 
-    const saasButton = screen.getByRole("button", {
+    const saasLink = screen.getByRole("link", {
       name: "ENTERPRISE$LEARN_MORE ENTERPRISE$SAAS_TITLE",
     });
-    const selfHostedButton = screen.getByRole("button", {
+    const selfHostedLink = screen.getByRole("link", {
       name: "ENTERPRISE$LEARN_MORE ENTERPRISE$SELF_HOSTED_TITLE",
     });
 
-    expect(saasButton).toBeInTheDocument();
-    expect(selfHostedButton).toBeInTheDocument();
+    expect(saasLink).toBeInTheDocument();
+    expect(selfHostedLink).toBeInTheDocument();
   });
 });
