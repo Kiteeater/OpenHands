@@ -287,3 +287,25 @@ class TestLogOutput:
             'severity': 'INFO',
             'timestamp': FROZEN_TIMESTAMP,
         }
+
+    @freeze_time(FROZEN_TIMESTAMP)
+    def test_console_serializer_uses_ts_not_timestamp(self):
+        """When LOG_JSON_FOR_CONSOLE=1, use 'ts' from custom_json_serializer, not 'timestamp'."""
+        import server.logger as logger_module
+
+        string_io = StringIO()
+        logger = logging.Logger('test_console')
+
+        # Patch LOG_JSON_FOR_CONSOLE to 1 for both setup_json_logger and custom_json_serializer
+        with patch.object(logger_module, 'LOG_JSON_FOR_CONSOLE', 1):
+            setup_json_logger(logger, 'INFO', _out=string_io)
+            logger.info('Test console message')
+
+        # Parse output - LOG_JSON_FOR_CONSOLE pretty-prints JSON across multiple lines
+        output = json.loads(string_io.getvalue())
+
+        # Should have 'ts' from custom_json_serializer but NOT 'timestamp'
+        assert 'ts' in output
+        assert 'timestamp' not in output
+        assert output['message'] == 'Test console message'
+        assert output['severity'] == 'INFO'
