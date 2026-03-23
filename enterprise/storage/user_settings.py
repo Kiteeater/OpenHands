@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from server.constants import DEFAULT_BILLING_MARGIN
 from sqlalchemy import JSON, Boolean, Column, DateTime, Float, Identity, Integer, String
 from storage.base import Base
@@ -8,17 +10,9 @@ class UserSettings(Base):  # type: ignore
     id = Column(Integer, Identity(), primary_key=True)
     keycloak_user_id = Column(String, nullable=True, index=True)
     language = Column(String, nullable=True)
-    agent = Column(String, nullable=True)
-    max_iterations = Column(Integer, nullable=True)
-    security_analyzer = Column(String, nullable=True)
-    confirmation_mode = Column(Boolean, nullable=True, default=False)
-    llm_model = Column(String, nullable=True)
     llm_api_key = Column(String, nullable=True)
     llm_api_key_for_byor = Column(String, nullable=True)
-    llm_base_url = Column(String, nullable=True)
     remote_runtime_resource_factor = Column(Integer, nullable=True)
-    enable_default_condenser = Column(Boolean, nullable=False, default=True)
-    condenser_max_size = Column(Integer, nullable=True)
     user_consents_to_analytics = Column(Boolean, nullable=True)
     billing_margin = Column(Float, nullable=True, default=DEFAULT_BILLING_MARGIN)
     enable_sound_notifications = Column(Boolean, nullable=True, default=False)
@@ -46,10 +40,10 @@ class UserSettings(Base):  # type: ignore
         Boolean, nullable=True, default=False
     )  # False = not migrated, True = migrated
 
-    @property
-    def sdk_settings_values(self) -> dict:
-        return self.agent_settings or {}
+    def to_settings(self):
+        from openhands.storage.data_models.settings import Settings
 
-    @sdk_settings_values.setter
-    def sdk_settings_values(self, value: dict | None) -> None:
-        self.agent_settings = value or {}
+        return Settings(
+            agent_settings=dict(self.agent_settings or {}),
+            llm_api_key=self.llm_api_key,
+        )

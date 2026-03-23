@@ -17,6 +17,7 @@ from storage.user_settings import UserSettings
 
 from openhands.storage.data_models.settings import Settings
 
+# Only these agent_settings keys are stored per member; org-wide settings live on Org.
 _MEMBER_SCOPED_AGENT_SETTINGS_KEYS = {
     'schema_version',
     'llm.model',
@@ -166,31 +167,21 @@ class OrgMemberStore:
 
     @staticmethod
     def get_kwargs_from_user_settings(user_settings: UserSettings):
-        kwargs = {
-            normalized: getattr(user_settings, normalized)
-            for c in OrgMember.__table__.columns
-            if (normalized := c.name.lstrip('_')) and hasattr(user_settings, normalized)
-        }
-        if not kwargs.get('agent_settings'):
-            legacy_settings = Settings(
-                agent=user_settings.agent,
-                llm_model=user_settings.llm_model,
-                llm_api_key=user_settings.llm_api_key,
-                llm_base_url=user_settings.llm_base_url,
-                max_iterations=user_settings.max_iterations,
-                confirmation_mode=user_settings.confirmation_mode,
-                security_analyzer=user_settings.security_analyzer,
-                enable_default_condenser=user_settings.enable_default_condenser,
-                condenser_max_size=user_settings.condenser_max_size,
-            )
-            kwargs['agent_settings'] = {
+        settings = user_settings.to_settings()
+        return {
+            'llm_api_key': user_settings.llm_api_key,
+            'llm_model': settings.llm_model,
+            'llm_api_key_for_byor': user_settings.llm_api_key_for_byor,
+            'llm_base_url': settings.llm_base_url,
+            'max_iterations': settings.max_iterations,
+            'agent_settings': {
                 key: value
-                for key, value in legacy_settings.normalized_agent_settings(
+                for key, value in settings.normalized_agent_settings(
                     strip_secret_values=True
                 ).items()
                 if key in _MEMBER_SCOPED_AGENT_SETTINGS_KEYS
-            }
-        return kwargs
+            },
+        }
 
     @staticmethod
     async def get_org_members_count(

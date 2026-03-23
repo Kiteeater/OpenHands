@@ -212,26 +212,30 @@ class OrgStore:
 
     @staticmethod
     def get_kwargs_from_user_settings(user_settings: UserSettings):
-        kwargs = {}
-
-        for c in Org.__table__.columns:
-            # Normalize for lookup
-            normalized = (
-                c.name.removeprefix('_default_').removeprefix('default_').lstrip('_')
-            )
-
-            if not hasattr(user_settings, normalized):
-                continue
-
-            # ---- FIX: Output key should drop *only* leading "_" but preserve "default" ----
-            key = c.name
-            if key.startswith('_'):
-                key = key[1:]  # remove only the very first leading underscore
-
-            kwargs[key] = getattr(user_settings, normalized)
-
-        kwargs['org_version'] = user_settings.user_version
-        return kwargs
+        settings = user_settings.to_settings()
+        return {
+            'agent': settings.agent,
+            'default_max_iterations': settings.max_iterations,
+            'security_analyzer': settings.security_analyzer,
+            'confirmation_mode': settings.confirmation_mode,
+            'default_llm_model': settings.llm_model,
+            'default_llm_base_url': settings.llm_base_url,
+            'remote_runtime_resource_factor': user_settings.remote_runtime_resource_factor,
+            'enable_default_condenser': settings.enable_default_condenser,
+            'billing_margin': user_settings.billing_margin,
+            'enable_proactive_conversation_starters': user_settings.enable_proactive_conversation_starters,
+            'sandbox_base_container_image': user_settings.sandbox_base_container_image,
+            'sandbox_runtime_container_image': user_settings.sandbox_runtime_container_image,
+            'org_version': user_settings.user_version,
+            'mcp_config': user_settings.mcp_config,
+            'search_api_key': user_settings.search_api_key,
+            'sandbox_api_key': user_settings.sandbox_api_key,
+            'max_budget_per_task': user_settings.max_budget_per_task,
+            'enable_solvability_analysis': user_settings.enable_solvability_analysis,
+            'v1_enabled': user_settings.v1_enabled,
+            'condenser_max_size': settings.condenser_max_size,
+            'sandbox_grouping_strategy': user_settings.sandbox_grouping_strategy,
+        }
 
     @staticmethod
     async def persist_org_with_owner(

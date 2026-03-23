@@ -67,11 +67,3 @@ class OrgMember(Base):  # type: ignore
     def llm_api_key_for_byor(self, value: str | SecretStr | None):
         raw = value.get_secret_value() if isinstance(value, SecretStr) else value
         self._llm_api_key_for_byor = encrypt_value(raw) if raw else None
-
-    @property
-    def sdk_settings_values(self) -> dict:
-        return self.agent_settings or {}
-
-    @sdk_settings_values.setter
-    def sdk_settings_values(self, value: dict | None) -> None:
-        self.agent_settings = value or {}

@@ -100,27 +100,6 @@ def settings_store(async_session_maker, mock_config):
             if 'secrets_store' in item_dict:
                 del item_dict['secrets_store']
 
-            legacy_fields = {
-                'agent': item.agent,
-                'llm_model': item.llm_model,
-                'llm_api_key': item.llm_api_key.get_secret_value()
-                if item.llm_api_key
-                else None,
-                'llm_base_url': item.llm_base_url,
-                'max_iterations': item.max_iterations,
-                'confirmation_mode': item.confirmation_mode,
-                'security_analyzer': item.security_analyzer,
-                'enable_default_condenser': item.enable_default_condenser,
-                'condenser_max_size': item.condenser_max_size,
-            }
-            item_dict.update(
-                {
-                    key: value
-                    for key, value in legacy_fields.items()
-                    if value is not None
-                }
-            )
-
             # Encrypt the data before storing
             store._encrypt_kwargs(item_dict)
             item_dict['agent_settings'] = item.agent_settings
@@ -191,7 +170,7 @@ async def test_store_and_load_keycloak_user(settings_store):
         )
         stored = result.scalars().first()
         assert stored is not None
-        assert stored.agent == 'smith'
+        assert stored.agent_settings['agent'] == 'smith'
 
 
 @pytest.mark.asyncio

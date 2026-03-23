@@ -235,7 +235,7 @@ class UserStore:
             # if user has custom settings, set org defaults to current version
             if custom_settings:
                 org_kwargs['default_llm_model'] = get_default_litellm_model()
-                org_kwargs['llm_base_url'] = LITE_LLM_API_URL
+                org_kwargs['default_llm_base_url'] = LITE_LLM_API_URL
                 org_kwargs['org_version'] = ORG_SETTINGS_VERSION
 
             for key, value in org_kwargs.items():
@@ -994,17 +994,12 @@ class UserStore:
 
         return UserSettings(
             keycloak_user_id=user_id,
-            # OrgMember fields
             llm_api_key=org_member.llm_api_key.get_secret_value()
             if org_member.llm_api_key
             else None,
             llm_api_key_for_byor=org_member.llm_api_key_for_byor.get_secret_value()
             if org_member.llm_api_key_for_byor
             else None,
-            llm_model=llm_model,
-            llm_base_url=llm_base_url,
-            max_iterations=max_iterations,
-            # User fields
             accepted_tos=user.accepted_tos,
             enable_sound_notifications=user.enable_sound_notifications,
             language=user.language,
@@ -1013,12 +1008,7 @@ class UserStore:
             email_verified=user.email_verified,
             git_user_name=user.git_user_name,
             git_user_email=user.git_user_email,
-            # Org fields
-            agent=org.agent,
-            security_analyzer=org.security_analyzer,
-            confirmation_mode=org.confirmation_mode,
             remote_runtime_resource_factor=org.remote_runtime_resource_factor,
-            enable_default_condenser=org.enable_default_condenser,
             billing_margin=org.billing_margin,
             enable_proactive_conversation_starters=org.enable_proactive_conversation_starters,
             sandbox_base_container_image=org.sandbox_base_container_image,
@@ -1034,7 +1024,7 @@ class UserStore:
             max_budget_per_task=org.max_budget_per_task,
             enable_solvability_analysis=org.enable_solvability_analysis,
             v1_enabled=org.v1_enabled,
-            condenser_max_size=org.condenser_max_size,
+            sandbox_grouping_strategy=org.sandbox_grouping_strategy,
             agent_settings=agent_settings,
             already_migrated=False,
         )
@@ -1053,15 +1043,12 @@ class UserStore:
         Returns:
             True if user has custom settings, False if using old defaults
         """
-        # Normalize values
-        user_model = (
-            user_settings.llm_model.strip() or None if user_settings.llm_model else None
-        )
+        settings = user_settings.to_settings()
+
+        user_model = settings.llm_model.strip() or None if settings.llm_model else None
         user_base_url = (
-            user_settings.llm_base_url.strip() or None
-            if user_settings.llm_base_url
-            else None
-        )
+            settings.llm_base_url.strip() if settings.llm_base_url else None
+        ) or None
 
         # Custom base_url = definitely custom settings (BYOK)
         if user_base_url and user_base_url != LITE_LLM_API_URL:

@@ -28,6 +28,7 @@ from openhands.server.settings import Settings
 from openhands.storage.settings.settings_store import SettingsStore
 from openhands.utils.llm import is_openhands_model
 
+# Only these agent_settings keys are persisted on org_member; org-wide values live on Org.
 _MEMBER_SCOPED_AGENT_SETTINGS_KEYS = {
     'schema_version',
     'llm.model',

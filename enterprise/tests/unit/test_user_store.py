@@ -688,8 +688,10 @@ def test_has_custom_settings_custom_base_url():
 
     user_settings = UserSettings(
         keycloak_user_id='test',
-        llm_base_url='https://custom.api.example.com',
-        llm_model='some-model',
+        agent_settings={
+            'llm.base_url': 'https://custom.api.example.com',
+            'llm.model': 'some-model',
+        },
     )
 
     result = UserStore._has_custom_settings(user_settings, old_user_version=1)
@@ -701,11 +703,7 @@ def test_has_custom_settings_no_model():
     """Test that no model set means using defaults."""
     from storage.user_settings import UserSettings
 
-    user_settings = UserSettings(
-        keycloak_user_id='test',
-        llm_base_url=None,
-        llm_model=None,
-    )
+    user_settings = UserSettings(keycloak_user_id='test', agent_settings={})
 
     result = UserStore._has_custom_settings(user_settings, old_user_version=1)
 
@@ -718,8 +716,7 @@ def test_has_custom_settings_empty_model():
 
     user_settings = UserSettings(
         keycloak_user_id='test',
-        llm_base_url=None,
-        llm_model='   ',  # whitespace only
+        agent_settings={'llm.model': '   '},
     )
 
     result = UserStore._has_custom_settings(user_settings, old_user_version=1)
@@ -780,7 +777,10 @@ def test_create_user_settings_from_entities():
 
     assert result.keycloak_user_id == user_id
     assert result.llm_api_key == 'test-api-key'
-    assert result.llm_model == 'claude-3-5-sonnet'
+    assert result.agent_settings['llm.model'] == 'claude-3-5-sonnet'
+    assert result.agent_settings['llm.base_url'] == 'https://api.example.com'
+    assert result.agent_settings['max_iterations'] == 50
+    assert result.agent_settings['agent'] == 'CodeActAgent'
     assert result.language == 'en'
     assert result.email == 'test@example.com'
 
@@ -835,9 +835,10 @@ def test_create_user_settings_from_entities_with_org_fallback():
     )
 
     # Should have fallen back to org defaults
-    assert result.llm_model == 'default-model'
-    assert result.llm_base_url == 'https://default.api.com'
-    assert result.max_iterations == 100
+    assert result.agent_settings['llm.model'] == 'default-model'
+    assert result.agent_settings['llm.base_url'] == 'https://default.api.com'
+    assert result.agent_settings['max_iterations'] == 100
+    assert result.agent_settings['agent'] == 'CodeActAgent'
     assert result.language == 'es'
     assert result.search_api_key == 'search-key'
 
