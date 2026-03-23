@@ -105,14 +105,11 @@ describe("InformationRequest", () => {
     expect(screen.getByText("COMMON$BACK")).toBeInTheDocument();
   });
 
-  it("should navigate to /login when back button is clicked", async () => {
-    const user = userEvent.setup();
+  it("should have back link pointing to /login", () => {
     renderWithRouter();
 
-    const backButton = screen.getByText("COMMON$BACK");
-    await user.click(backButton);
-
-    expect(mockNavigate).toHaveBeenCalledWith("/login");
+    const backLink = screen.getByText("COMMON$BACK");
+    expect(backLink).toHaveAttribute("href", "/login");
   });
 
   it("should show SaaS form when SaaS Learn More is clicked", async () => {

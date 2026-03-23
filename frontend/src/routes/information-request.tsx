@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { I18nKey } from "#/i18n/declaration";
 import { Typography } from "#/ui/typography";
@@ -11,18 +11,38 @@ import { EnterpriseCard } from "#/components/features/onboarding/enterprise-card
 import OpenHandsLogoWhite from "#/assets/branding/openhands-logo-white.svg?react";
 import CloudIcon from "#/icons/cloud-minimal.svg?react";
 import StackedIcon from "#/icons/stacked.svg?react";
-import { ModalBackdrop } from "#/components/shared/modals/modal-backdrop";
+import {
+  getEnterpriseFormData,
+  saveEnterpriseFormData,
+} from "#/utils/local-storage";
+
+const DEFAULT_FORM_DATA: FormData = {
+  name: "",
+  company: "",
+  email: "",
+  message: "",
+};
 
 export default function InformationRequest() {
   const { t } = useTranslation();
   const [selectedRequestType, setSelectedRequestType] =
     useState<RequestType | null>(null);
-  const [formData, setFormData] = useState<FormData>({
-    name: "",
-    company: "",
-    email: "",
-    message: "",
-  });
+  const [saasFormData, setSaasFormData] = useState<FormData>(DEFAULT_FORM_DATA);
+  const [selfHostedFormData, setSelfHostedFormData] =
+    useState<FormData>(DEFAULT_FORM_DATA);
+
+  // Load saved form data from localStorage on mount
+  useEffect(() => {
+    const savedSaasData = getEnterpriseFormData("saas");
+    if (savedSaasData) {
+      setSaasFormData(savedSaasData);
+    }
+
+    const savedSelfHostedData = getEnterpriseFormData("self-hosted");
+    if (savedSelfHostedData) {
+      setSelfHostedFormData(savedSelfHostedData);
+    }
+  }, []);
 
   const handleLearnMore = (type: RequestType) => {
     setSelectedRequestType(type);
@@ -31,6 +51,22 @@ export default function InformationRequest() {
   const handleFormBack = () => {
     setSelectedRequestType(null);
   };
+
+  const handleFormDataChange = useCallback(
+    (data: FormData) => {
+      if (selectedRequestType === "saas") {
+        setSaasFormData(data);
+        saveEnterpriseFormData("saas", data);
+      } else if (selectedRequestType === "self-hosted") {
+        setSelfHostedFormData(data);
+        saveEnterpriseFormData("self-hosted", data);
+      }
+    },
+    [selectedRequestType],
+  );
+
+  const currentFormData =
+    selectedRequestType === "saas" ? saasFormData : selfHostedFormData;
 
   const saasFeatures = [
     t(I18nKey.ENTERPRISE$SAAS_FEATURE_NO_INFRASTRUCTURE),
@@ -49,26 +85,28 @@ export default function InformationRequest() {
   // Show form if a request type is selected
   if (selectedRequestType) {
     return (
-      <div
+      <main
         data-testid="information-request-page"
-        className="w-full max-w-4xl flex flex-col items-center gap-8 p-6"
+        className="min-h-screen flex items-center justify-center bg-base p-4"
       >
-        <InformationRequestForm
-          requestType={selectedRequestType}
-          formData={formData}
-          onFormDataChange={setFormData}
-          onBack={handleFormBack}
-        />
-      </div>
+        <div className="w-full max-w-4xl flex flex-col items-center gap-8 p-6">
+          <InformationRequestForm
+            requestType={selectedRequestType}
+            formData={currentFormData}
+            onFormDataChange={handleFormDataChange}
+            onBack={handleFormBack}
+          />
+        </div>
+      </main>
     );
   }
 
   return (
-    <ModalBackdrop>
-      <div
-        data-testid="information-request-page"
-        className="w-full max-w-4xl flex flex-col items-center gap-[16px] p-6"
-      >
+    <main
+      data-testid="information-request-page"
+      className="min-h-screen flex items-center justify-center bg-base p-4"
+    >
+      <div className="w-full max-w-4xl flex flex-col items-center gap-[16px] p-6">
         {/* Logo */}
         <OpenHandsLogoWhite width={56} height={56} />
 
@@ -111,6 +149,6 @@ export default function InformationRequest() {
           {t(I18nKey.COMMON$BACK)}
         </a>
       </div>
-    </ModalBackdrop>
+    </main>
   );
 }
