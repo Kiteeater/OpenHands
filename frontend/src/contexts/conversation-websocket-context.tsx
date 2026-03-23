@@ -314,7 +314,11 @@ export function ConversationWebSocketProvider({
     latestPlanningFileEventRef.current = null;
   }, [conversationId]);
 
-  const { data: preloadedEvents } = useConversationHistory(conversationId);
+  const { data: conversationHistory } = useConversationHistory(conversationId);
+
+  // Extract preloaded events and oldest timestamp for WebSocket handoff
+  const preloadedEvents = conversationHistory?.events;
+  const oldestPreloadedTimestamp = conversationHistory?.oldestTimestamp;
 
   useEffect(() => {
     if (!preloadedEvents || preloadedEvents.length === 0) {
@@ -688,6 +692,12 @@ export function ConversationWebSocketProvider({
       queryParams.session_api_key = sessionApiKey;
     }
 
+    // Bi-directional loading: pass after_timestamp to avoid duplicate events
+    // WebSocket will only send events newer than the oldest preloaded event
+    if (oldestPreloadedTimestamp) {
+      queryParams.after_timestamp = oldestPreloadedTimestamp;
+    }
+
     return {
       queryParams,
       reconnect: { enabled: true },
@@ -737,6 +747,7 @@ export function ConversationWebSocketProvider({
     sessionApiKey,
     conversationId,
     conversationUrl,
+    oldestPreloadedTimestamp,
   ]);
 
   // Separate WebSocket options for planning agent connection
