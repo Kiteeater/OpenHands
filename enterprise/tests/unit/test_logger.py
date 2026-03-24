@@ -33,7 +33,7 @@ class TestLogOutput:
         assert output == {
             'message': 'Test message',
             'severity': 'INFO',
-            'timestamp': FROZEN_TIMESTAMP,
+            'ts': FROZEN_TIMESTAMP,
         }
 
     @freeze_time(FROZEN_TIMESTAMP)
@@ -45,7 +45,7 @@ class TestLogOutput:
         assert output == {
             'message': 'Test message',
             'severity': 'ERROR',
-            'timestamp': FROZEN_TIMESTAMP,
+            'ts': FROZEN_TIMESTAMP,
         }
 
     @freeze_time(FROZEN_TIMESTAMP)
@@ -58,7 +58,7 @@ class TestLogOutput:
             'key': '..val..',
             'message': 'Test message',
             'severity': 'INFO',
-            'timestamp': FROZEN_TIMESTAMP,
+            'ts': FROZEN_TIMESTAMP,
         }
 
     def test_format_stack(self):
@@ -285,7 +285,7 @@ class TestLogOutput:
         assert output == {
             'message': 'The secret key was ******',
             'severity': 'INFO',
-            'timestamp': FROZEN_TIMESTAMP,
+            'ts': FROZEN_TIMESTAMP,
         }
 
     @freeze_time(FROZEN_TIMESTAMP)
