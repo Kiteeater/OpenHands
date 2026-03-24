@@ -309,3 +309,33 @@ class TestLogOutput:
         assert 'timestamp' not in output
         assert output['message'] == 'Test console message'
         assert output['severity'] == 'INFO'
+
+    @freeze_time(FROZEN_TIMESTAMP)
+    def test_ts_not_duplicated_when_both_json_modes_enabled(self):
+        """When both LOG_JSON=1 and LOG_JSON_FOR_CONSOLE=1, 'ts' should appear only once."""
+        import server.logger as logger_module
+
+        string_io = StringIO()
+        logger = logging.Logger('test_both_modes')
+
+        # Patch both LOG_JSON and LOG_JSON_FOR_CONSOLE to 1
+        with (
+            patch.object(logger_module, 'LOG_JSON', True),
+            patch.object(logger_module, 'LOG_JSON_FOR_CONSOLE', 1),
+        ):
+            setup_json_logger(logger, 'INFO', _out=string_io)
+            logger.info('Test both modes message')
+
+        raw_output = string_io.getvalue()
+        output = json.loads(raw_output)
+
+        # Should have exactly one 'ts' field (not duplicated)
+        assert 'ts' in output
+        assert 'timestamp' not in output
+        # Verify 'ts' appears only once in the raw output (not duplicated as key)
+        assert (
+            raw_output.count('"ts"') == 1
+        ), f"'ts' should appear exactly once, found in: {raw_output}"
+        assert output['message'] == 'Test both modes message'
+        assert output['severity'] == 'INFO'
+        assert output['ts'] == FROZEN_TIMESTAMP
