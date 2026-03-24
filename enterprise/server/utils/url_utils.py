@@ -29,6 +29,8 @@ def get_cookie_domain() -> str | None:
 
 
 def get_cookie_samesite() -> Literal['lax', 'strict']:
-    # for localhost and feature/staging stacks we set it to 'lax' as the cookie domain won't allow 'strict'
-    web_url = get_global_config().web_url
-    return 'strict' if web_url and not (IS_FEATURE_ENV or IS_LOCAL_ENV) else 'lax'
+    # Always use 'lax' to allow cookies on top-level navigations (e.g., clicking links in emails)
+    # 'lax' still protects against CSRF by not sending cookies on cross-site POST requests
+    # Previously 'strict' was used in production, but this blocked cookies when users clicked
+    # invitation links from emails, causing authenticated users to be redirected to login
+    return 'lax'

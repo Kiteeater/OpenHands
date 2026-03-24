@@ -193,8 +193,13 @@ class TestGetCookieDomain:
 class TestGetCookieSamesite:
     """Tests for get_cookie_samesite function."""
 
-    def test_production_with_configured_web_url_returns_strict(self):
-        """In production with web_url configured, should return 'strict'."""
+    def test_production_with_configured_web_url_returns_lax(self):
+        """In production with web_url configured, should return 'lax'.
+
+        We use 'lax' instead of 'strict' to allow cookies on top-level navigations
+        (e.g., clicking invitation links from emails). 'lax' still protects against
+        CSRF by not sending cookies on cross-site POST requests.
+        """
         from server.utils.url_utils import get_cookie_samesite
 
         mock_config = MagicMock()
@@ -208,7 +213,7 @@ class TestGetCookieSamesite:
         ):
             result = get_cookie_samesite()
 
-        assert result == 'strict'
+        assert result == 'lax'
 
     def test_production_without_web_url_returns_lax(self):
         """In production without web_url configured, should return 'lax'."""
@@ -381,29 +386,26 @@ class TestSecurityScenarios:
                 result = get_cookie_domain()
                 assert result is None, f'Expected None for {env_name} environment'
 
-    def test_strict_samesite_only_in_production(self):
+    def test_samesite_lax_in_all_environments(self):
         """
-        SameSite=strict should only be set in production to ensure proper
-        security without breaking OAuth flows in development.
+        SameSite=lax should be used in all environments to allow cookies on
+        top-level navigations (e.g., clicking invitation links from emails)
+        while still protecting against CSRF on POST requests.
         """
         from server.utils.url_utils import get_cookie_samesite
 
         mock_config = MagicMock()
         mock_config.web_url = 'https://app.all-hands.dev'
 
-        # Production should be strict
-        with (
-            patch('server.utils.url_utils.get_global_config', return_value=mock_config),
-            patch('server.utils.url_utils.IS_FEATURE_ENV', False),
-            patch('server.utils.url_utils.IS_STAGING_ENV', False),
-            patch('server.utils.url_utils.IS_LOCAL_ENV', False),
-        ):
-            assert get_cookie_samesite() == 'strict'
-
-        # Dev environments should be lax
+        # All environments should return 'lax'
         for env_config in [
+            # Production
+            {'IS_LOCAL_ENV': False, 'IS_STAGING_ENV': False, 'IS_FEATURE_ENV': False},
+            # Local
             {'IS_LOCAL_ENV': True, 'IS_STAGING_ENV': False, 'IS_FEATURE_ENV': False},
+            # Staging
             {'IS_LOCAL_ENV': False, 'IS_STAGING_ENV': True, 'IS_FEATURE_ENV': False},
+            # Feature
             {'IS_LOCAL_ENV': False, 'IS_STAGING_ENV': True, 'IS_FEATURE_ENV': True},
         ]:
             with (
