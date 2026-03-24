@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { I18nKey } from "#/i18n/declaration";
 import { useTracking } from "#/hooks/use-tracking";
 import { Card } from "#/ui/card";
@@ -24,14 +24,12 @@ interface InformationRequestFormProps {
   requestType: RequestType;
   formData: FormData;
   onFormDataChange: (data: FormData) => void;
-  onBack: () => void;
 }
 
 export function InformationRequestForm({
   requestType,
   formData,
   onFormDataChange,
-  onBack,
 }: InformationRequestFormProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -173,14 +171,13 @@ export function InformationRequestForm({
             role="group"
             aria-label="Form actions"
           >
-            <button
-              type="button"
-              onClick={onBack}
+            <Link
+              to="/information-request"
               aria-label={t(I18nKey.COMMON$BACK)}
-              className="flex-1 px-6 py-2.5 text-sm rounded bg-transparent text-white border border-[#242424] hover:bg-white transition-colors cursor-pointer hover:text-black"
+              className="flex-1 px-6 py-2.5 text-sm text-center rounded bg-transparent text-white border border-[#242424] hover:bg-white transition-colors cursor-pointer hover:text-black"
             >
               {t(I18nKey.COMMON$BACK)}
-            </button>
+            </Link>
             <button
               type="submit"
               disabled={isSubmitting}

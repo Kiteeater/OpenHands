@@ -18,15 +18,14 @@ vi.mock("#/hooks/use-tracking", () => ({
 }));
 
 // Wrapper to manage form state (needed since component is controlled)
-function StatefulForm({ requestType, onBack }: { requestType: RequestType; onBack: () => void }) {
+function StatefulForm({ requestType }: { requestType: RequestType }) {
   const [formData, setFormData] = useState<FormData>({ name: "", company: "", email: "", message: "" });
-  return <InformationRequestForm requestType={requestType} formData={formData} onFormDataChange={setFormData} onBack={onBack} />;
+  return <InformationRequestForm requestType={requestType} formData={formData} onFormDataChange={setFormData} />;
 }
 
 describe("InformationRequestForm", () => {
   const defaultProps = {
     requestType: "saas" as RequestType,
-    onBack: vi.fn(),
   };
 
   beforeEach(() => {
@@ -42,6 +41,10 @@ describe("InformationRequestForm", () => {
       {
         path: "/login",
         Component: () => <div data-testid="login-page" />,
+      },
+      {
+        path: "/information-request",
+        Component: () => <div data-testid="information-request-page" />,
       },
     ]);
 
@@ -98,16 +101,15 @@ describe("InformationRequestForm", () => {
     expect(card).toBeInTheDocument();
   });
 
-  it("should call onBack when back button is clicked", async () => {
-    const mockOnBack = vi.fn();
+  it("should navigate to /information-request when back link is clicked", async () => {
     const user = userEvent.setup();
 
-    renderWithRouter({ ...defaultProps, onBack: mockOnBack });
+    renderWithRouter();
 
-    const backButton = screen.getByRole("button", { name: "COMMON$BACK" });
-    await user.click(backButton);
+    const backLink = screen.getByRole("link", { name: "COMMON$BACK" });
+    await user.click(backLink);
 
-    expect(mockOnBack).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("information-request-page")).toBeInTheDocument();
   });
 
   it("should update form fields when user types", async () => {
@@ -154,12 +156,12 @@ describe("InformationRequestForm", () => {
     expect(submitButton).toHaveAttribute("type", "submit");
   });
 
-  it("should render back button", () => {
+  it("should render back link", () => {
     renderWithRouter();
 
-    const backButton = screen.getByRole("button", { name: "COMMON$BACK" });
-    expect(backButton).toBeInTheDocument();
-    expect(backButton).toHaveAttribute("type", "button");
+    const backLink = screen.getByRole("link", { name: "COMMON$BACK" });
+    expect(backLink).toBeInTheDocument();
+    expect(backLink).toHaveAttribute("href", "/information-request");
   });
 
   it("should have button group with role and aria-label", () => {

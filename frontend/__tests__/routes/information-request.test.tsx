@@ -138,7 +138,7 @@ describe("InformationRequest", () => {
     expect(screen.getByText("ENTERPRISE$FORM_SELF_HOSTED_TITLE")).toBeInTheDocument();
   });
 
-  it("should return to card selection when form back button is clicked", async () => {
+  it("should render back link in form pointing to /information-request", async () => {
     const user = userEvent.setup();
     renderWithRouter();
 
@@ -146,13 +146,10 @@ describe("InformationRequest", () => {
     const learnMoreButtons = screen.getAllByText("ENTERPRISE$LEARN_MORE");
     await user.click(learnMoreButtons[0]);
 
-    // Click back button in form
-    const backButton = screen.getByRole("button", { name: "COMMON$BACK" });
-    await user.click(backButton);
-
-    // Should be back to card selection view
-    expect(screen.queryByTestId("information-request-form")).not.toBeInTheDocument();
-    expect(screen.getByText("ENTERPRISE$GET_OPENHANDS_TITLE")).toBeInTheDocument();
+    // Verify form is visible and back link exists
+    expect(screen.getByTestId("information-request-form")).toBeInTheDocument();
+    const backLink = screen.getByRole("link", { name: "COMMON$BACK" });
+    expect(backLink).toHaveAttribute("href", "/information-request");
   });
 
   it("should have accessible Learn More links with aria-label", () => {

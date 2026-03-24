@@ -49,10 +49,6 @@ export default function InformationRequest() {
     setSelectedRequestType(type);
   };
 
-  const handleFormBack = () => {
-    setSelectedRequestType(null);
-  };
-
   const handleFormDataChange = useCallback(
     (data: FormData) => {
       if (selectedRequestType === "saas") {
@@ -95,7 +91,6 @@ export default function InformationRequest() {
             requestType={selectedRequestType}
             formData={currentFormData}
             onFormDataChange={handleFormDataChange}
-            onBack={handleFormBack}
           />
         </div>
       </main>
