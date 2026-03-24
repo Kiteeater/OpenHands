@@ -31,8 +31,4 @@ def get_cookie_domain() -> str | None:
 def get_cookie_samesite() -> Literal['lax', 'strict']:
     # for localhost and feature/staging stacks we set it to 'lax' as the cookie domain won't allow 'strict'
     web_url = get_global_config().web_url
-    return (
-        'strict'
-        if web_url and not (IS_FEATURE_ENV or IS_STAGING_ENV or IS_LOCAL_ENV)
-        else 'lax'
-    )
+    return 'strict' if web_url and not (IS_FEATURE_ENV or IS_LOCAL_ENV) else 'lax'
