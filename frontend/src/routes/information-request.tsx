@@ -6,18 +6,18 @@ import { Typography } from "#/ui/typography";
 import {
   InformationRequestForm,
   RequestType,
-  FormData,
 } from "#/components/features/onboarding/information-request-form";
 import { EnterpriseCard } from "#/components/features/onboarding/enterprise-card";
 import OpenHandsLogoWhite from "#/assets/branding/openhands-logo-white.svg?react";
 import CloudIcon from "#/icons/cloud-minimal.svg?react";
 import StackedIcon from "#/icons/stacked.svg?react";
 import {
+  EnterpriseFormData,
   getEnterpriseFormData,
   saveEnterpriseFormData,
 } from "#/utils/local-storage";
 
-const DEFAULT_FORM_DATA: FormData = {
+const DEFAULT_FORM_DATA: EnterpriseFormData = {
   name: "",
   company: "",
   email: "",
@@ -28,9 +28,10 @@ export default function InformationRequest() {
   const { t } = useTranslation();
   const [selectedRequestType, setSelectedRequestType] =
     useState<RequestType | null>(null);
-  const [saasFormData, setSaasFormData] = useState<FormData>(DEFAULT_FORM_DATA);
+  const [saasFormData, setSaasFormData] =
+    useState<EnterpriseFormData>(DEFAULT_FORM_DATA);
   const [selfHostedFormData, setSelfHostedFormData] =
-    useState<FormData>(DEFAULT_FORM_DATA);
+    useState<EnterpriseFormData>(DEFAULT_FORM_DATA);
 
   // Load saved form data from localStorage on mount
   useEffect(() => {
@@ -50,7 +51,7 @@ export default function InformationRequest() {
   };
 
   const handleFormDataChange = useCallback(
-    (data: FormData) => {
+    (data: EnterpriseFormData) => {
       if (selectedRequestType === "saas") {
         setSaasFormData(data);
         saveEnterpriseFormData("saas", data);

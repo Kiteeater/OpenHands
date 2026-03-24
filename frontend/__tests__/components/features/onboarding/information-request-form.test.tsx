@@ -6,8 +6,8 @@ import { useState } from "react";
 import {
   InformationRequestForm,
   RequestType,
-  FormData,
 } from "#/components/features/onboarding/information-request-form";
+import { EnterpriseFormData } from "#/utils/local-storage";
 
 // Mock useTracking
 const mockTrackEnterpriseLeadFormSubmitted = vi.fn();
@@ -19,7 +19,7 @@ vi.mock("#/hooks/use-tracking", () => ({
 
 // Wrapper to manage form state (needed since component is controlled)
 function StatefulForm({ requestType }: { requestType: RequestType }) {
-  const [formData, setFormData] = useState<FormData>({ name: "", company: "", email: "", message: "" });
+  const [formData, setFormData] = useState<EnterpriseFormData>({ name: "", company: "", email: "", message: "" });
   return <InformationRequestForm requestType={requestType} formData={formData} onFormDataChange={setFormData} />;
 }
 

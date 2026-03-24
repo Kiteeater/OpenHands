@@ -6,6 +6,7 @@ import { useTracking } from "#/hooks/use-tracking";
 import { Card } from "#/ui/card";
 import { Typography } from "#/ui/typography";
 import { isValidEmail } from "#/utils/input-validation";
+import { EnterpriseFormData } from "#/utils/local-storage";
 import { FormInput } from "./form-input";
 import OpenHandsLogoWhite from "#/assets/branding/openhands-logo-white.svg?react";
 import CloudIcon from "#/icons/cloud-minimal.svg?react";
@@ -13,17 +14,10 @@ import StackedIcon from "#/icons/stacked.svg?react";
 
 export type RequestType = "saas" | "self-hosted";
 
-export interface FormData {
-  name: string;
-  company: string;
-  email: string;
-  message: string;
-}
-
 interface InformationRequestFormProps {
   requestType: RequestType;
-  formData: FormData;
-  onFormDataChange: (data: FormData) => void;
+  formData: EnterpriseFormData;
+  onFormDataChange: (data: EnterpriseFormData) => void;
 }
 
 export function InformationRequestForm({
@@ -56,8 +50,6 @@ export function InformationRequestForm({
 
     setIsSubmitting(true);
 
-    // TODO: Implement actual form submission API call
-    // Track form submission in PostHog
     trackEnterpriseLeadFormSubmitted({
       requestType,
       name: formData.name.trim(),
