@@ -7,6 +7,7 @@ import { Card } from "#/ui/card";
 import { Typography } from "#/ui/typography";
 import { isValidEmail } from "#/utils/input-validation";
 import { EnterpriseFormData } from "#/utils/local-storage";
+import { cn } from "#/utils/utils";
 import { FormInput } from "./form-input";
 import OpenHandsLogoWhite from "#/assets/branding/openhands-logo-white.svg?react";
 import CloudIcon from "#/icons/cloud-minimal.svg?react";
@@ -87,27 +88,27 @@ export function InformationRequestForm({
   return (
     <div
       data-testid="information-request-form"
-      className="w-full max-w-[896px] flex flex-col items-center gap-8"
+      className={cn("w-full max-w-[896px] flex flex-col items-center gap-8")}
     >
       {/* Header */}
-      <div className="w-full flex flex-col items-center gap-4">
+      <div className={cn("w-full flex flex-col items-center gap-4")}>
         <OpenHandsLogoWhite width={56} height={56} />
-        <div className="text-center flex flex-col gap-2">
-          <Typography.H1 className="text-2xl font-semibold">
+        <div className={cn("text-center flex flex-col gap-2")}>
+          <Typography.H1 className={cn("text-2xl font-semibold")}>
             {title}
           </Typography.H1>
-          <Typography.Text className="text-[#8C8C8C] leading-5">
+          <Typography.Text className={cn("text-[#8C8C8C] leading-5")}>
             {subtitle}
           </Typography.Text>
         </div>
       </div>
 
       {/* Content: Form + Card */}
-      <div className="w-full flex flex-col md:flex-row gap-8">
+      <div className={cn("w-full flex flex-col md:flex-row gap-8")}>
         {/* Form */}
         <form
           onSubmit={handleSubmit}
-          className="flex-1 flex flex-col gap-4 w-full md:max-w-[544px]"
+          className={cn("flex-1 flex flex-col gap-4 w-full md:max-w-[544px]")}
         >
           <FormInput
             id="name"
@@ -159,14 +160,18 @@ export function InformationRequestForm({
 
           {/* Buttons */}
           <div
-            className="flex gap-4 mt-4"
+            className={cn("flex gap-4 mt-4")}
             role="group"
             aria-label="Form actions"
           >
             <Link
               to="/information-request"
               aria-label={t(I18nKey.COMMON$BACK)}
-              className="flex-1 px-6 py-2.5 text-sm text-center rounded bg-transparent text-white border border-[#242424] hover:bg-white transition-colors cursor-pointer hover:text-black"
+              className={cn(
+                "flex-1 px-6 py-2.5 text-sm text-center rounded",
+                "bg-transparent text-white border border-[#242424]",
+                "hover:bg-white hover:text-black transition-colors cursor-pointer",
+              )}
             >
               {t(I18nKey.COMMON$BACK)}
             </Link>
@@ -174,7 +179,12 @@ export function InformationRequestForm({
               type="submit"
               disabled={isSubmitting}
               aria-label={t(I18nKey.ENTERPRISE$FORM_SUBMIT)}
-              className="flex-1 px-6 py-2.5 text-sm rounded bg-white text-black border border-white hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              className={cn(
+                "flex-1 px-6 py-2.5 text-sm rounded",
+                "bg-white text-black border border-white",
+                "hover:bg-gray-100 transition-colors cursor-pointer",
+                "disabled:opacity-50 disabled:cursor-not-allowed",
+              )}
             >
               {isSubmitting
                 ? t(I18nKey.ENTERPRISE$FORM_SUBMITTING)
@@ -187,19 +197,26 @@ export function InformationRequestForm({
         <Card
           theme="dark"
           gradient="standard"
-          className="w-full md:w-80 flex-col p-6 gap-4"
+          className={cn("w-full md:w-80 flex-col p-6 gap-4")}
         >
-          <div className="w-10 h-10">
+          <div className={cn("w-10 h-10")}>
             {isSaas ? (
-              <CloudIcon className="w-10 h-10 text-[#8C8C8C]" />
+              <CloudIcon className={cn("w-10 h-10 text-[#8C8C8C]")} />
             ) : (
-              <StackedIcon className="w-10 h-10" />
+              <StackedIcon className={cn("w-10 h-10")} />
             )}
           </div>
-          <Typography.H3 className="text-xl font-semibold leading-7 text-[#FAFAFA]">
+          <Typography.H3
+            className={cn("text-xl font-semibold leading-7 text-[#FAFAFA]")}
+          >
             {cardTitle}
           </Typography.H3>
-          <Typography.Text className="relative top-[0.5px] font-inter text-[#8C8C8C] font-400 text-14px leading-[22.75px] tracking-[0px]">
+          <Typography.Text
+            className={cn(
+              "relative top-[0.5px] font-inter text-[#8C8C8C]",
+              "font-400 text-14px leading-[22.75px] tracking-[0px]",
+            )}
+          >
             {cardDescription}
           </Typography.Text>
         </Card>

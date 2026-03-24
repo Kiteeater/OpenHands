@@ -16,6 +16,7 @@ import {
   getEnterpriseFormData,
   saveEnterpriseFormData,
 } from "#/utils/local-storage";
+import { cn } from "#/utils/utils";
 
 const DEFAULT_FORM_DATA: EnterpriseFormData = {
   name: "",
@@ -85,9 +86,15 @@ export default function InformationRequest() {
     return (
       <main
         data-testid="information-request-page"
-        className="min-h-screen flex items-center justify-center bg-base p-4"
+        className={cn(
+          "min-h-screen flex items-center justify-center bg-base p-4",
+        )}
       >
-        <div className="w-full max-w-4xl flex flex-col items-center gap-8 p-6">
+        <div
+          className={cn(
+            "w-full max-w-4xl flex flex-col items-center gap-8 p-6",
+          )}
+        >
           <InformationRequestForm
             requestType={selectedRequestType}
             formData={currentFormData}
@@ -101,26 +108,32 @@ export default function InformationRequest() {
   return (
     <main
       data-testid="information-request-page"
-      className="min-h-screen flex items-center justify-center bg-base p-4"
+      className={cn(
+        "min-h-screen flex items-center justify-center bg-base p-4",
+      )}
     >
-      <div className="w-full max-w-4xl flex flex-col items-center gap-[16px] p-6">
+      <div
+        className={cn(
+          "w-full max-w-4xl flex flex-col items-center gap-[16px] p-6",
+        )}
+      >
         {/* Logo */}
         <OpenHandsLogoWhite width={56} height={56} />
 
         {/* Header */}
-        <div className="text-center flex flex-col gap-3">
-          <Typography.H1 className="text-2xl font-bold">
+        <div className={cn("text-center flex flex-col gap-3")}>
+          <Typography.H1 className={cn("text-2xl font-bold")}>
             {t(I18nKey.ENTERPRISE$GET_OPENHANDS_TITLE)}
           </Typography.H1>
-          <Typography.Text className="text-[#8C8C8C] max-w-lg">
+          <Typography.Text className={cn("text-[#8C8C8C] max-w-lg")}>
             {t(I18nKey.ENTERPRISE$GET_OPENHANDS_SUBTITLE)}
           </Typography.Text>
         </div>
 
         {/* Cards */}
-        <div className="w-full flex flex-col md:flex-row gap-4">
+        <div className={cn("w-full flex flex-col md:flex-row gap-4")}>
           <EnterpriseCard
-            icon={<CloudIcon className="w-10 h-10 text-[#8C8C8C]" />}
+            icon={<CloudIcon className={cn("w-10 h-10 text-[#8C8C8C]")} />}
             title={t(I18nKey.ENTERPRISE$SAAS_TITLE)}
             description={t(I18nKey.ENTERPRISE$SAAS_DESCRIPTION)}
             features={saasFeatures}
@@ -128,7 +141,7 @@ export default function InformationRequest() {
             learnMoreLabel={t(I18nKey.ENTERPRISE$LEARN_MORE)}
           />
           <EnterpriseCard
-            icon={<StackedIcon className="w-10 h-10" />}
+            icon={<StackedIcon className={cn("w-10 h-10")} />}
             title={t(I18nKey.ENTERPRISE$SELF_HOSTED_TITLE)}
             description={t(I18nKey.ENTERPRISE$SELF_HOSTED_CARD_DESCRIPTION)}
             features={selfHostedFeatures}
@@ -141,7 +154,11 @@ export default function InformationRequest() {
         <Link
           to="/login"
           aria-label={t(I18nKey.COMMON$BACK)}
-          className="px-6 py-2.5 text-sm rounded-sm bg-[#050505] text-white border border-[#242424] hover:bg-white hover:text-black transition-colors"
+          className={cn(
+            "px-6 py-2.5 text-sm rounded-sm",
+            "bg-[#050505] text-white border border-[#242424]",
+            "hover:bg-white hover:text-black transition-colors",
+          )}
         >
           {t(I18nKey.COMMON$BACK)}
         </Link>
