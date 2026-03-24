@@ -9,9 +9,9 @@ from uuid import UUID
 from server.routes.org_models import OrgLLMSettingsUpdate
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from storage.agent_settings_utils import get_org_agent_settings, merge_agent_settings
 from storage.org import Org
 from storage.org_member_store import OrgMemberStore
-from storage.org_store import OrgStore
 from storage.user import User
 
 
@@ -68,9 +68,12 @@ class OrgLLMSettingsStore:
         if not org:
             return None
 
-        # Apply updates to org (excludes llm_api_key which is member-only)
         update_data.apply_to_org(org)
-        OrgStore.sync_agent_settings(org)
+        if update_data.agent_settings is not None:
+            org.agent_settings = merge_agent_settings(
+                get_org_agent_settings(org),
+                update_data.agent_settings,
+            )
 
         # Propagate relevant settings to all org members
         member_updates = update_data.get_member_updates()

@@ -113,7 +113,10 @@ class OrgService:
             contact_name=contact_name,
             contact_email=contact_email,
             org_version=ORG_SETTINGS_VERSION,
-            default_llm_model=get_default_litellm_model(),
+            agent_settings={
+                'schema_version': 1,
+                'llm.model': get_default_litellm_model(),
+            },
         )
 
     @staticmethod
@@ -468,41 +471,6 @@ class OrgService:
             return False
 
     @staticmethod
-    def _get_llm_settings_fields() -> set[str]:
-        """
-        Get the set of organization fields that are considered LLM settings
-        and require admin/owner role to update.
-
-        Returns:
-            set[str]: Set of field names that require elevated permissions
-        """
-        return {
-            'default_llm_model',
-            'default_llm_base_url',
-            'search_api_key',
-            'security_analyzer',
-            'agent',
-            'confirmation_mode',
-            'enable_default_condenser',
-            'condenser_max_size',
-        }
-
-    @staticmethod
-    def _has_llm_settings_updates(update_data: OrgUpdate) -> set[str]:
-        """
-        Check if the update contains any LLM settings fields.
-
-        Args:
-            update_data: The organization update data
-
-        Returns:
-            set[str]: Set of LLM fields being updated (empty if none)
-        """
-        llm_fields = OrgService._get_llm_settings_fields()
-        update_dict = update_data.model_dump(exclude_none=True)
-        return llm_fields.intersection(update_dict.keys())
-
-    @staticmethod
     async def update_org_with_permissions(
         org_id: UUID,
         update_data: OrgUpdate,
@@ -569,33 +537,6 @@ class OrgService:
                     },
                 )
                 raise OrgNameExistsError(update_data.name)
-
-        # Check if update contains any LLM settings
-        llm_fields_being_updated = OrgService._has_llm_settings_updates(update_data)
-        if llm_fields_being_updated:
-            # Verify user has admin or owner role
-            has_permission = await OrgService.has_admin_or_owner_role(user_id, org_id)
-            if not has_permission:
-                logger.warning(
-                    'User attempted to update LLM settings without permission',
-                    extra={
-                        'user_id': user_id,
-                        'org_id': str(org_id),
-                        'attempted_fields': list(llm_fields_being_updated),
-                    },
-                )
-                raise PermissionError(
-                    'Admin or owner role required to update LLM settings'
-                )
-
-            logger.debug(
-                'User has permission to update LLM settings',
-                extra={
-                    'user_id': user_id,
-                    'org_id': str(org_id),
-                    'llm_fields': list(llm_fields_being_updated),
-                },
-            )
 
         # Convert to dict for OrgStore (excluding None values)
         update_dict = update_data.model_dump(exclude_none=True)

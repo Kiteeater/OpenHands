@@ -1056,9 +1056,11 @@ async def test_update_all_members_llm_settings_async_with_non_encrypted_fields(
 
     # Act
     member_settings = OrgMemberLLMSettings(
-        llm_model='new-model',
-        llm_base_url='https://new-url.com',
-        max_iterations=50,
+        agent_settings={
+            'llm.model': 'new-model',
+            'llm.base_url': 'https://new-url.com',
+            'max_iterations': 50,
+        }
     )
 
     async with async_session_maker() as session:
@@ -1187,9 +1189,9 @@ def test_org_member_llm_settings_has_updates_empty():
 
 def test_org_llm_settings_update_apply_to_org_skips_llm_api_key():
     """
-    GIVEN: OrgLLMSettingsUpdate with llm_api_key and other fields set
+    GIVEN: OrgLLMSettingsUpdate with search_api_key and llm_api_key set
     WHEN: apply_to_org() is called
-    THEN: llm_api_key is NOT applied to org, but other fields are
+    THEN: search_api_key is applied to org, but llm_api_key is not
     """
     from unittest.mock import MagicMock
 
@@ -1197,18 +1199,17 @@ def test_org_llm_settings_update_apply_to_org_skips_llm_api_key():
 
     # Arrange
     settings = OrgLLMSettingsUpdate(
-        default_llm_model='claude-3',
+        search_api_key='applied-to-org',
         llm_api_key='should-not-be-applied',
     )
     mock_org = MagicMock()
-    mock_org.default_llm_model = None
+    mock_org.search_api_key = None
 
     # Act
     settings.apply_to_org(mock_org)
 
     # Assert
-    assert mock_org.default_llm_model == 'claude-3'
-    # llm_api_key should NOT be set on org (it's member-only)
+    assert mock_org.search_api_key == 'applied-to-org'
     assert (
         not hasattr(mock_org, 'llm_api_key')
         or mock_org.llm_api_key != 'should-not-be-applied'
@@ -1225,7 +1226,7 @@ def test_org_llm_settings_update_get_member_updates_includes_llm_api_key():
 
     # Arrange
     settings = OrgLLMSettingsUpdate(
-        default_llm_model='claude-3',
+        agent_settings={'llm.model': 'claude-3'},
         llm_api_key='new-member-key',
     )
 
@@ -1235,7 +1236,7 @@ def test_org_llm_settings_update_get_member_updates_includes_llm_api_key():
     # Assert
     assert member_updates is not None
     assert member_updates.llm_api_key == 'new-member-key'
-    assert member_updates.llm_model is None
+    assert member_updates.agent_settings is None
 
 
 def test_org_llm_settings_update_get_member_updates_only_llm_api_key():
@@ -1255,7 +1256,7 @@ def test_org_llm_settings_update_get_member_updates_only_llm_api_key():
     # Assert
     assert member_updates is not None
     assert member_updates.llm_api_key == 'member-key-only'
-    assert member_updates.llm_model is None
+    assert member_updates.agent_settings is None
 
 
 def test_org_llm_settings_update_has_updates_with_llm_api_key():

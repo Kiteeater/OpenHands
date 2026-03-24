@@ -94,15 +94,20 @@ async def test_update_org_llm_settings_success(async_session_maker):
     """
     # Arrange
     async with async_session_maker() as session:
-        org = Org(name='test-org', default_llm_model='old-model')
+        org = Org(
+            name='test-org',
+            agent_settings={'schema_version': 1, 'llm.model': 'old-model'},
+        )
         session.add(org)
         await session.commit()
         org_id = org.id
 
         update_data = OrgLLMSettingsUpdate(
-            default_llm_model='new-model',
-            agent='CodeActAgent',
-            confirmation_mode=True,
+            agent_settings={
+                'llm.model': 'new-model',
+                'agent': 'CodeActAgent',
+                'verification.confirmation_mode': True,
+            }
         )
 
         # Act
@@ -115,9 +120,9 @@ async def test_update_org_llm_settings_success(async_session_maker):
 
     # Assert
     assert result is not None
-    assert result.default_llm_model == 'new-model'
-    assert result.agent == 'CodeActAgent'
-    assert result.confirmation_mode is True
+    assert result.agent_settings['llm.model'] == 'new-model'
+    assert result.agent_settings['agent'] == 'CodeActAgent'
+    assert result.agent_settings['verification.confirmation_mode'] is True
 
 
 @pytest.mark.asyncio
@@ -129,7 +134,7 @@ async def test_update_org_llm_settings_org_not_found(async_session_maker):
     """
     # Arrange
     non_existent_org_id = uuid.uuid4()
-    update_data = OrgLLMSettingsUpdate(default_llm_model='new-model')
+    update_data = OrgLLMSettingsUpdate(agent_settings={'llm.model': 'new-model'})
 
     # Act
     async with async_session_maker() as session:
@@ -149,13 +154,16 @@ async def test_update_org_llm_settings_propagates_to_members(async_session_maker
     """
     # Arrange
     async with async_session_maker() as session:
-        org = Org(name='test-org', default_llm_model='old-model')
+        org = Org(
+            name='test-org',
+            agent_settings={'schema_version': 1, 'llm.model': 'old-model'},
+        )
         session.add(org)
         await session.commit()
         org_id = org.id
 
         update_data = OrgLLMSettingsUpdate(
-            default_llm_model='new-model',
+            agent_settings={'llm.model': 'new-model'},
             llm_api_key='new-api-key',
         )
 
@@ -171,5 +179,5 @@ async def test_update_org_llm_settings_propagates_to_members(async_session_maker
         mock_update_members.assert_called_once()
         call_args = mock_update_members.call_args
         member_settings = call_args[0][2]
-        assert member_settings.llm_model == 'new-model'
+        assert member_settings.agent_settings is None
         assert member_settings.llm_api_key == 'new-api-key'

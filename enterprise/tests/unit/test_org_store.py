@@ -285,11 +285,9 @@ def test_get_kwargs_from_settings():
     kwargs = OrgStore.get_kwargs_from_settings(settings)
 
     # Should only include fields that exist in Org model
-    assert 'agent' in kwargs
-    assert 'default_llm_model' in kwargs
     assert 'agent_settings' in kwargs
-    assert kwargs['agent'] == 'CodeActAgent'
-    assert kwargs['default_llm_model'] == 'anthropic/claude-sonnet-4-5-20250929'
+    assert 'agent' not in kwargs
+    assert 'default_llm_model' not in kwargs
     assert kwargs['agent_settings']['agent'] == 'CodeActAgent'
     assert (
         kwargs['agent_settings']['llm.model'] == 'anthropic/claude-sonnet-4-5-20250929'
@@ -485,9 +483,12 @@ async def test_persist_org_with_owner_with_multiple_fields(
         name='Complex Org',
         contact_name='Alice Smith',
         contact_email='alice@example.com',
-        agent='CodeActAgent',
-        default_max_iterations=50,
-        confirmation_mode=True,
+        agent_settings={
+            'schema_version': 1,
+            'agent': 'CodeActAgent',
+            'max_iterations': 50,
+            'verification.confirmation_mode': True,
+        },
         billing_margin=0.15,
     )
 
@@ -497,8 +498,11 @@ async def test_persist_org_with_owner_with_multiple_fields(
         role_id=1,
         status='active',
         llm_api_key='test-key',
-        max_iterations=100,
-        llm_model='gpt-4',
+        agent_settings={
+            'schema_version': 1,
+            'max_iterations': 100,
+            'llm.model': 'gpt-4',
+        },
     )
 
     # Act
@@ -507,17 +511,17 @@ async def test_persist_org_with_owner_with_multiple_fields(
 
     # Assert
     assert result.name == 'Complex Org'
-    assert result.agent == 'CodeActAgent'
-    assert result.default_max_iterations == 50
-    assert result.confirmation_mode is True
+    assert result.agent_settings['agent'] == 'CodeActAgent'
+    assert result.agent_settings['max_iterations'] == 50
+    assert result.agent_settings['verification.confirmation_mode'] is True
     assert result.billing_margin == 0.15
 
     # Verify persistence
     async with async_session_maker() as session:
         persisted_org = await session.get(Org, org_id)
-        assert persisted_org.agent == 'CodeActAgent'
-        assert persisted_org.default_max_iterations == 50
-        assert persisted_org.confirmation_mode is True
+        assert persisted_org.agent_settings['agent'] == 'CodeActAgent'
+        assert persisted_org.agent_settings['max_iterations'] == 50
+        assert persisted_org.agent_settings['verification.confirmation_mode'] is True
         assert persisted_org.billing_margin == 0.15
 
         result_query = await session.execute(
@@ -1035,11 +1039,11 @@ async def test_update_org_llm_settings_async_with_llm_api_key():
     mock_org = Org(
         id=org_id,
         name='Test Organization',
-        default_llm_model='old-model',
+        agent_settings={'schema_version': 1, 'llm.model': 'old-model'},
     )
 
     llm_settings = OrgLLMSettingsUpdate(
-        default_llm_model='new-model',
+        agent_settings={'llm.model': 'new-model'},
         llm_api_key='new-member-api-key',
     )
 
@@ -1067,7 +1071,6 @@ async def test_update_org_llm_settings_async_with_llm_api_key():
 
         # Assert - Org is returned
         assert result is not None
-        assert result.default_llm_model == 'new-model'
         assert result.agent_settings['llm.model'] == 'new-model'
 
         # Assert - Member update was called with correct settings
@@ -1075,7 +1078,7 @@ async def test_update_org_llm_settings_async_with_llm_api_key():
         call_args = mock_member_update.call_args
         member_settings = call_args[0][2]  # Third positional arg is member_settings
         assert member_settings.llm_api_key == 'new-member-api-key'
-        assert member_settings.llm_model is None
+        assert member_settings.agent_settings is None
 
 
 @pytest.mark.asyncio
@@ -1089,7 +1092,7 @@ async def test_update_org_llm_settings_async_org_not_found():
 
     # Arrange
     non_existent_org_id = uuid.uuid4()
-    llm_settings = OrgLLMSettingsUpdate(default_llm_model='new-model')
+    llm_settings = OrgLLMSettingsUpdate(agent_settings={'llm.model': 'new-model'})
 
     # Mock the async session to return None for org
     mock_session = AsyncMock()

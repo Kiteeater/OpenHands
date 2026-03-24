@@ -230,10 +230,8 @@ class UserStore:
             org_kwargs = OrgStore.get_kwargs_from_user_settings(decrypted_user_settings)
             org_kwargs.pop('id', None)
 
-            # if user has custom settings, set org defaults to current version
+            # If the user has custom settings, keep the org defaults minimal.
             if custom_settings:
-                org_kwargs['default_llm_model'] = get_default_litellm_model()
-                org_kwargs['default_llm_base_url'] = LITE_LLM_API_URL
                 org_kwargs['agent_settings'] = {
                     'schema_version': 1,
                     'llm.model': get_default_litellm_model(),
@@ -972,7 +970,6 @@ class UserStore:
             sandbox_base_container_image=org.sandbox_base_container_image,
             sandbox_runtime_container_image=org.sandbox_runtime_container_image,
             user_version=org.org_version,
-            mcp_config=org.mcp_config,
             search_api_key=org.search_api_key.get_secret_value()
             if org.search_api_key
             else None,

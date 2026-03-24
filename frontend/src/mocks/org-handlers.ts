@@ -6,6 +6,12 @@ import {
   UpdateOrganizationMemberParams,
 } from "#/types/org";
 
+const MOCK_MEMBER_AGENT_SETTINGS = {
+  "llm.model": "gpt-4",
+  "llm.base_url": "https://api.openai.com",
+  max_iterations: 20,
+};
+
 const MOCK_ME: Omit<OrganizationMember, "role" | "org_id"> = {
   user_id: "99",
   email: "me@acme.org",
@@ -13,6 +19,7 @@ const MOCK_ME: Omit<OrganizationMember, "role" | "org_id"> = {
   max_iterations: 20,
   llm_model: "gpt-4",
   llm_base_url: "https://api.openai.com",
+  agent_settings: MOCK_MEMBER_AGENT_SETTINGS,
   status: "active",
 };
 
@@ -27,22 +34,25 @@ export const createMockOrganization = (
   contact_name: "Contact Name",
   contact_email: "contact@example.com",
   conversation_expiration: 86400,
-  agent: "default-agent",
-  default_max_iterations: 20,
-  security_analyzer: "standard",
-  confirmation_mode: false,
-  default_llm_model: "gpt-5-1",
-  default_llm_base_url: "https://api.example-llm.com",
   remote_runtime_resource_factor: 2,
-  enable_default_condenser: true,
   billing_margin: 0.15,
   enable_proactive_conversation_starters: true,
   sandbox_base_container_image: "ghcr.io/example/sandbox-base:latest",
   sandbox_runtime_container_image: "ghcr.io/example/sandbox-runtime:latest",
   org_version: 0,
-  mcp_config: {
-    tools: [],
-    settings: {},
+  agent_settings: {
+    agent: "default-agent",
+    max_iterations: 20,
+    "verification.security_analyzer": "standard",
+    "verification.confirmation_mode": false,
+    "llm.model": "gpt-5-1",
+    "llm.base_url": "https://api.example-llm.com",
+    "condenser.enabled": true,
+    "condenser.max_size": 240,
+    mcp_config: {
+      tools: [],
+      settings: {},
+    },
   },
   search_api_key: null,
   sandbox_api_key: null,
@@ -90,6 +100,7 @@ const INITIAL_MOCK_MEMBERS: Record<string, OrganizationMember[]> = {
       max_iterations: 20,
       llm_model: "gpt-4",
       llm_base_url: "https://api.openai.com",
+      agent_settings: MOCK_MEMBER_AGENT_SETTINGS,
       status: "active",
     },
   ],
@@ -103,6 +114,7 @@ const INITIAL_MOCK_MEMBERS: Record<string, OrganizationMember[]> = {
       max_iterations: 20,
       llm_model: "gpt-4",
       llm_base_url: "https://api.openai.com",
+      agent_settings: MOCK_MEMBER_AGENT_SETTINGS,
       status: "active",
     },
     {
@@ -114,6 +126,7 @@ const INITIAL_MOCK_MEMBERS: Record<string, OrganizationMember[]> = {
       max_iterations: 20,
       llm_model: "gpt-4",
       llm_base_url: "https://api.openai.com",
+      agent_settings: MOCK_MEMBER_AGENT_SETTINGS,
       status: "active",
     },
     {
@@ -125,6 +138,7 @@ const INITIAL_MOCK_MEMBERS: Record<string, OrganizationMember[]> = {
       max_iterations: 20,
       llm_model: "gpt-4",
       llm_base_url: "https://api.openai.com",
+      agent_settings: MOCK_MEMBER_AGENT_SETTINGS,
       status: "active",
     },
   ],
@@ -138,6 +152,7 @@ const INITIAL_MOCK_MEMBERS: Record<string, OrganizationMember[]> = {
       max_iterations: 20,
       llm_model: "gpt-4",
       llm_base_url: "https://api.openai.com",
+      agent_settings: MOCK_MEMBER_AGENT_SETTINGS,
       status: "active",
     },
     {
@@ -149,6 +164,7 @@ const INITIAL_MOCK_MEMBERS: Record<string, OrganizationMember[]> = {
       max_iterations: 20,
       llm_model: "gpt-4",
       llm_base_url: "https://api.openai.com",
+      agent_settings: MOCK_MEMBER_AGENT_SETTINGS,
       status: "active",
     },
   ],
@@ -162,6 +178,7 @@ const INITIAL_MOCK_MEMBERS: Record<string, OrganizationMember[]> = {
       max_iterations: 20,
       llm_model: "gpt-4",
       llm_base_url: "https://api.openai.com",
+      agent_settings: MOCK_MEMBER_AGENT_SETTINGS,
       status: "active",
     },
     {
@@ -173,6 +190,7 @@ const INITIAL_MOCK_MEMBERS: Record<string, OrganizationMember[]> = {
       max_iterations: 20,
       llm_model: "gpt-4",
       llm_base_url: "https://api.openai.com",
+      agent_settings: MOCK_MEMBER_AGENT_SETTINGS,
       status: "active",
     },
     {
@@ -184,6 +202,7 @@ const INITIAL_MOCK_MEMBERS: Record<string, OrganizationMember[]> = {
       max_iterations: 20,
       llm_model: "gpt-4",
       llm_base_url: "https://api.openai.com",
+      agent_settings: MOCK_MEMBER_AGENT_SETTINGS,
       status: "active",
     },
     {
@@ -195,6 +214,7 @@ const INITIAL_MOCK_MEMBERS: Record<string, OrganizationMember[]> = {
       max_iterations: 20,
       llm_model: "gpt-4",
       llm_base_url: "https://api.openai.com",
+      agent_settings: MOCK_MEMBER_AGENT_SETTINGS,
       status: "active",
     },
     {
@@ -206,6 +226,7 @@ const INITIAL_MOCK_MEMBERS: Record<string, OrganizationMember[]> = {
       max_iterations: 20,
       llm_model: "gpt-4",
       llm_base_url: "https://api.openai.com",
+      agent_settings: MOCK_MEMBER_AGENT_SETTINGS,
       status: "invited",
     },
   ],
@@ -531,6 +552,7 @@ export const ORG_HANDLERS = [
         max_iterations: 20,
         llm_model: "gpt-4",
         llm_base_url: "https://api.openai.com",
+        agent_settings: MOCK_MEMBER_AGENT_SETTINGS,
         status: "invited" as const,
       }));
 

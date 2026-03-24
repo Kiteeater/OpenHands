@@ -6,23 +6,26 @@ export interface Organization {
   contact_name: string;
   contact_email: string;
   conversation_expiration: number;
-  agent: string;
-  default_max_iterations: number;
-  security_analyzer: string;
-  confirmation_mode: boolean;
-  default_llm_model: string;
-  default_llm_base_url: string;
   remote_runtime_resource_factor: number;
-  enable_default_condenser: boolean;
   billing_margin: number;
   enable_proactive_conversation_starters: boolean;
   sandbox_base_container_image: string;
   sandbox_runtime_container_image: string;
   org_version: number;
-  mcp_config: {
+  agent_settings?: Record<string, unknown>;
+  agent?: string;
+  default_max_iterations?: number;
+  security_analyzer?: string;
+  confirmation_mode?: boolean;
+  default_llm_model?: string;
+  default_llm_base_url?: string;
+  enable_default_condenser?: boolean;
+  condenser_max_size?: number;
+  mcp_config?: {
     tools: unknown[];
     settings: Record<string, unknown>;
   };
+
   search_api_key: string | null;
   sandbox_api_key: string | null;
   max_budget_per_task: number;
@@ -37,10 +40,12 @@ export interface OrganizationMember {
   user_id: string;
   email: string;
   role: OrganizationUserRole;
-  llm_api_key: string;
   max_iterations: number;
   llm_model: string;
   llm_base_url: string;
+
+  llm_api_key: string;
+  agent_settings?: Record<string, unknown>;
   status: "active" | "invited" | "inactive";
 }
 

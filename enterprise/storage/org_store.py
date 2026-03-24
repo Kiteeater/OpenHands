@@ -14,6 +14,10 @@ from server.constants import (
 from server.routes.org_models import OrgLLMSettingsUpdate, OrphanedUserError
 from sqlalchemy import select, text
 from sqlalchemy.orm import joinedload
+from storage.agent_settings_utils import (
+    get_org_agent_settings,
+    merge_agent_settings,
+)
 from storage.database import a_session_maker
 from storage.lite_llm_manager import LiteLlmManager
 from storage.org import Org
@@ -30,28 +34,11 @@ class OrgStore:
 
     @staticmethod
     def get_agent_settings_from_org(org: Org) -> dict[str, object]:
-        agent_settings = dict(getattr(org, 'agent_settings', {}) or {})
-        legacy_values = getattr(org, '__dict__', {})
-        for key, value in {
-            'agent': legacy_values.get('agent'),
-            'llm.model': legacy_values.get('default_llm_model'),
-            'llm.base_url': legacy_values.get('default_llm_base_url'),
-            'verification.confirmation_mode': legacy_values.get('confirmation_mode'),
-            'verification.security_analyzer': legacy_values.get('security_analyzer'),
-            'condenser.enabled': legacy_values.get('enable_default_condenser'),
-            'condenser.max_size': legacy_values.get('condenser_max_size'),
-            'max_iterations': legacy_values.get('default_max_iterations'),
-            'mcp_config': legacy_values.get('mcp_config'),
-        }.items():
-            if agent_settings.get(key) is None and value is not None:
-                agent_settings[key] = value
-        if agent_settings and 'schema_version' not in agent_settings:
-            agent_settings['schema_version'] = 1
-        return agent_settings
+        return get_org_agent_settings(org)
 
     @staticmethod
     def sync_agent_settings(org: Org) -> None:
-        org.agent_settings = OrgStore.get_agent_settings_from_org(org)
+        org.agent_settings = get_org_agent_settings(org)
 
     @staticmethod
     async def create_org(
@@ -61,11 +48,15 @@ class OrgStore:
         async with a_session_maker() as session:
             org = Org(**kwargs)
             org.org_version = ORG_SETTINGS_VERSION
-            if org.default_llm_model is None:
-                org.default_llm_model = get_default_litellm_model()
+            org.agent_settings = merge_agent_settings(
+                org.agent_settings,
+                {
+                    'llm.model': get_org_agent_settings(org).get('llm.model')
+                    or get_default_litellm_model()
+                },
+            )
             if org.v1_enabled is None:
                 org.v1_enabled = DEFAULT_V1_ENABLED
-            OrgStore.sync_agent_settings(org)
             session.add(org)
             await session.commit()
             await session.refresh(org)
@@ -119,8 +110,10 @@ class OrgStore:
                 org.id,
                 {
                     'org_version': ORG_SETTINGS_VERSION,
-                    'default_llm_model': get_default_litellm_model(),
-                    'default_llm_base_url': LITE_LLM_API_URL,
+                    'agent_settings': {
+                        'llm.model': get_default_litellm_model(),
+                        'llm.base_url': LITE_LLM_API_URL,
+                    },
                 },
             )
         return org
@@ -207,32 +200,31 @@ class OrgStore:
 
             if 'id' in kwargs:
                 kwargs.pop('id')
+
+            agent_settings_updates = kwargs.pop('agent_settings', None)
             for key, value in kwargs.items():
                 if hasattr(org, key):
                     setattr(org, key, value)
 
-            OrgStore.sync_agent_settings(org)
+            if agent_settings_updates is not None:
+                org.agent_settings = merge_agent_settings(
+                    get_org_agent_settings(org),
+                    agent_settings_updates,
+                )
+
             await session.commit()
             await session.refresh(org)
             return org
 
     @staticmethod
     def get_kwargs_from_settings(settings: Settings):
-        agent_settings = settings.agent_settings
         normalized_agent_settings = settings.normalized_agent_settings(
             strip_secret_values=True
         )
         return {
-            'agent': agent_settings.agent,
-            'default_max_iterations': settings.get_agent_setting('max_iterations'),
-            'security_analyzer': agent_settings.verification.security_analyzer,
-            'confirmation_mode': agent_settings.verification.confirmation_mode,
-            'default_llm_model': agent_settings.llm.model,
-            'default_llm_base_url': agent_settings.llm.base_url,
             'remote_runtime_resource_factor': getattr(
                 settings, 'remote_runtime_resource_factor', None
             ),
-            'enable_default_condenser': agent_settings.condenser.enabled,
             'billing_margin': getattr(settings, 'billing_margin', None),
             'enable_proactive_conversation_starters': getattr(
                 settings, 'enable_proactive_conversation_starters', None
@@ -253,44 +245,32 @@ class OrgStore:
             'conversation_expiration': getattr(
                 settings, 'conversation_expiration', None
             ),
-            'condenser_max_size': settings.get_agent_setting('condenser.max_size'),
             'byor_export_enabled': getattr(settings, 'byor_export_enabled', None),
             'sandbox_grouping_strategy': getattr(
                 settings, 'sandbox_grouping_strategy', None
             ),
             'agent_settings': normalized_agent_settings,
-            'mcp_config': normalized_agent_settings.get('mcp_config'),
         }
 
     @staticmethod
     def get_kwargs_from_user_settings(user_settings: UserSettings):
         settings = user_settings.to_settings()
-        agent_settings = settings.agent_settings
         normalized_agent_settings = settings.normalized_agent_settings(
             strip_secret_values=True
         )
         return {
-            'agent': agent_settings.agent,
-            'default_max_iterations': settings.get_agent_setting('max_iterations'),
-            'security_analyzer': agent_settings.verification.security_analyzer,
-            'confirmation_mode': agent_settings.verification.confirmation_mode,
-            'default_llm_model': agent_settings.llm.model,
-            'default_llm_base_url': agent_settings.llm.base_url,
             'remote_runtime_resource_factor': user_settings.remote_runtime_resource_factor,
-            'enable_default_condenser': agent_settings.condenser.enabled,
             'billing_margin': user_settings.billing_margin,
             'enable_proactive_conversation_starters': user_settings.enable_proactive_conversation_starters,
             'sandbox_base_container_image': user_settings.sandbox_base_container_image,
             'sandbox_runtime_container_image': user_settings.sandbox_runtime_container_image,
             'org_version': user_settings.user_version,
             'agent_settings': normalized_agent_settings,
-            'mcp_config': normalized_agent_settings.get('mcp_config'),
             'search_api_key': user_settings.search_api_key,
             'sandbox_api_key': user_settings.sandbox_api_key,
             'max_budget_per_task': user_settings.max_budget_per_task,
             'enable_solvability_analysis': user_settings.enable_solvability_analysis,
             'v1_enabled': user_settings.v1_enabled,
-            'condenser_max_size': agent_settings.condenser.max_size,
             'sandbox_grouping_strategy': user_settings.sandbox_grouping_strategy,
         }
 
@@ -492,9 +472,12 @@ class OrgStore:
             if not org:
                 return None
 
-            # Apply updates to org
             llm_settings.apply_to_org(org)
-            OrgStore.sync_agent_settings(org)
+            if llm_settings.agent_settings is not None:
+                org.agent_settings = merge_agent_settings(
+                    get_org_agent_settings(org),
+                    llm_settings.agent_settings,
+                )
 
             # Propagate relevant settings to all org members
             member_updates = llm_settings.get_member_updates()

@@ -354,16 +354,15 @@ class LiteLlmManager:
                 # Check if the database key exists in LiteLLM
                 # If not, generate a new key to prevent verification failures later
                 db_key = None
-                legacy_settings = user_settings.to_settings() if user_settings else None
-                legacy_llm_base_url = (
-                    legacy_settings.agent_settings.llm.base_url
-                    if legacy_settings
+                llm_base_url = (
+                    user_settings.agent_settings.get('llm.base_url')
+                    if user_settings and user_settings.agent_settings
                     else None
                 )
                 if (
                     user_settings
                     and user_settings.llm_api_key
-                    and legacy_llm_base_url == LITE_LLM_API_URL
+                    and llm_base_url == LITE_LLM_API_URL
                 ):
                     db_key = user_settings.llm_api_key
                     if hasattr(db_key, 'get_secret_value'):

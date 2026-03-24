@@ -9,6 +9,10 @@ from server.routes.org_models import OrgMemberLLMSettings
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
+from storage.agent_settings_utils import (
+    get_org_member_agent_settings,
+    merge_agent_settings,
+)
 from storage.database import a_session_maker
 from storage.org_member import OrgMember
 from storage.user import User
@@ -147,10 +151,7 @@ class OrgMemberStore:
 
     @staticmethod
     def get_agent_settings_from_org_member(org_member: OrgMember) -> dict[str, object]:
-        agent_settings = dict(org_member.agent_settings or {})
-        if agent_settings and 'schema_version' not in agent_settings:
-            agent_settings['schema_version'] = 1
-        return agent_settings
+        return get_org_member_agent_settings(org_member)
 
     @staticmethod
     def get_kwargs_from_settings(settings: Settings):
@@ -249,12 +250,12 @@ class OrgMemberStore:
         org_id: UUID,
         member_settings: OrgMemberLLMSettings,
     ) -> None:
-        """Update LLM settings for all members of an organization.
+        """Update shared LLM settings for all members of an organization.
 
         Args:
             session: Database session (passed from caller for transaction)
             org_id: Organization ID
-            member_settings: Typed LLM settings to apply to all members
+            member_settings: Shared settings to apply to all members
         """
         values = member_settings.model_dump(exclude_none=True)
         if not values:
@@ -266,25 +267,17 @@ class OrgMemberStore:
         org_members = list(result.scalars().all())
 
         raw_key = values.pop('llm_api_key', None)
-        agent_settings_updates = {
-            'llm.model': values.pop('llm_model', None),
-            'llm.base_url': values.pop('llm_base_url', None),
-            'max_iterations': values.pop('max_iterations', None),
-        }
+        agent_settings_updates = values.pop('agent_settings', None)
 
         for org_member in org_members:
             if raw_key is not None:
                 org_member.llm_api_key = raw_key
 
-            if any(value is not None for value in agent_settings_updates.values()):
-                agent_settings = OrgMemberStore.get_agent_settings_from_org_member(
-                    org_member
+            if agent_settings_updates is not None:
+                org_member.agent_settings = merge_agent_settings(
+                    get_org_member_agent_settings(org_member),
+                    agent_settings_updates,
                 )
-                for key, value in agent_settings_updates.items():
-                    if value is None:
-                        continue
-                    agent_settings[key] = value
-                org_member.agent_settings = agent_settings
 
             for key, value in values.items():
                 setattr(org_member, key, value)
